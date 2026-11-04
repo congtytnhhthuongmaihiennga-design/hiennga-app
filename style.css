@@ -33,9 +33,9 @@ a{color:inherit;text-decoration:none}
 .lock{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border-radius:10px;background:var(--c-nhat);color:var(--c);font-weight:600;font-size:13px}
 
 /* ---------- Logo ---------- */
-.logo{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px;background:#fff;color:var(--do);font-weight:900;font-size:15px;letter-spacing:-.5px;flex-shrink:0;overflow:hidden;border:2px solid rgba(255,255,255,.6)}
+.logo{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:#fff;color:var(--do);font-weight:900;font-size:15px;letter-spacing:-.5px;flex-shrink:0;overflow:hidden;padding:2px}
 .logo img{width:100%;height:100%;object-fit:contain}
-.logo-lg{width:88px;height:88px;border-radius:24px;font-size:32px}
+.logo-lg{width:132px;height:132px;border-radius:24px;font-size:32px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
 
 /* ---------- Đăng nhập ---------- */
 .login{min-height:100vh;background:var(--c);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 16px 24px;position:relative}
@@ -66,7 +66,7 @@ a{color:inherit;text-decoration:none}
 .tb-icon{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:10px;color:#fff;flex-shrink:0}
 .tb-icon:hover,.tb-btn:hover{background:rgba(255,255,255,.24)}
 .tb-search{display:flex;align-items:center;gap:8px;background:#fff;color:#5F6776;border-radius:999px;padding:0 14px;margin:10px auto 0;max-width:1180px}
-.tb-search input{flex:1;border:none;background:none;padding:11px 0;font-size:15px;outline:none;min-width:0;color:#141824}
+.tb-search input{flex:1;border:none;background:none;padding:11px 0;font-size:16px;outline:none;min-width:0;color:#141824}
 .tb-search input::placeholder{color:#8A93A3}
 .sync{width:8px;height:8px;border-radius:50%;background:#7CE29A;flex-shrink:0}
 .sync.dang{background:#FFD166;animation:nhay 1s infinite}
@@ -130,7 +130,8 @@ main{max-width:1180px;margin:0 auto;padding:14px 14px 96px}
 /* ---------- Danh sách ---------- */
 .loc-bar{position:sticky;top:var(--top-h,64px);z-index:10;background:var(--bg);margin:-14px -14px 0;padding:10px 14px 8px}
 .list-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 8px;font-size:12.5px;color:var(--t2)}
-.list-tools select{border:none;background:none;font-weight:700;color:var(--t1);outline:none;font-size:13px}
+.sx{font-size:12.5px;color:var(--t2);padding:4px 0}
+.sx b{color:var(--c)}
 .goi-y{display:flex;align-items:center;gap:8px;background:var(--c-nhat);color:var(--c);border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600;margin-bottom:10px;width:100%}
 .goi-y .ic{width:18px;height:18px}
 .rows{background:var(--bg1);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
@@ -220,7 +221,7 @@ s.ny{font-size:12px;color:var(--t3);margin-left:6px}
 .vt{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;flex-shrink:0}
 .vt-admin{background:#F3E5F5;color:#7B1FA2}.vt-nv{background:var(--c-nhat);color:var(--c)}.vt-khachhang{background:#E8F5E9;color:#2E7D32}
 .form label{display:block;font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px}
-.form input,.form select{display:block;width:100%;margin-top:4px;padding:10px;border:1.5px solid var(--bd2);border-radius:10px;background:var(--bg1);font-size:15px}
+.form input,.form select{display:block;width:100%;margin-top:4px;padding:10px;border:1.5px solid var(--bd2);border-radius:10px;background:var(--bg1);font-size:16px}
 .form .hang2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .form .ck{display:flex;align-items:center;gap:8px}
 .form .ck input{width:auto;display:inline;margin:0}

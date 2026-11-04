@@ -7,11 +7,13 @@ window.APP_CONFIG = {
   TEN_APP: 'Hiển Nga',
   TEN_DAY_DU: 'Công ty TNHH Thương mại Hiển Nga',
   KHAU_HIEU: 'Vật liệu xây dựng · Long Xuyên, An Giang',
-  LOGO: '',                 // vd 'logo.png' – để trống thì hiện chữ viết tắt
+  LOGO: 'img/logo-mark.png',      // biểu tượng (ô nhỏ trên thanh đầu) – để trống thì hiện chữ viết tắt
+  LOGO_DAY_DU: 'img/logo.png',    // logo có chữ (màn đăng nhập)
   VIET_TAT: 'HN',
-  MAU_CHINH: '#1E3FA8',     // xanh dương logo
-  MAU_DAM: '#152E7E',
-  MAU_NHAN: '#D7261E',      // đỏ logo / bảng hiệu
+  // Màu logo gốc là xanh #0140FF và đỏ #FE0000; đỏ đậm hơn một chút để chữ trắng trên nền đỏ dễ đọc.
+  MAU_CHINH: '#0140FF',
+  MAU_DAM: '#0030C2',
+  MAU_NHAN: '#E00000',
 
   // Địa chỉ Web App Apps Script. Để trống (hoặc thêm ?demo=1) = chạy dữ liệu dùng thử.
   APPS_URL: 'https://script.google.com/macros/s/AKfycby2E2AXuXTAKxf2VfPi9LmEcJYyOkaUDFB0aY6vjQXn-qtP4qjgG_yD6_w00q7NVteI/exec',
