@@ -1,10 +1,10 @@
 # hiennga-app
 
-App bảng giá + tồn kho cho **Công ty TNHH Thương mại Hiền Nga** (nhiều hãng: gạch, ngói, keo, thiết bị vệ sinh, sơn).
+App bảng giá + tồn kho cho **Công ty TNHH Thương mại Hiển Nga** – Long Xuyên, An Giang (nhiều hãng: gạch ốp lát, thiết bị vệ sinh, thiết bị nhà bếp, sơn, ngói, keo).
 
 - Giao diện: `index.html`, `style.css`, `app.js` – chạy trên GitHub Pages.
 - Thông số riêng (tên, màu, logo, địa chỉ máy chủ, liên hệ): **`config.js`**.
-- Máy chủ: thư mục `backend/` – Google Apps Script gắn với Google Sheet "Bảng giá & tồn kho Hiền Nga".
+- Máy chủ: thư mục `backend/` – Google Apps Script gắn với Google Sheet "Bảng giá & tồn kho Hiển Nga".
 - Dữ liệu giá, tồn kho, tài khoản **chỉ nằm trong Google Sheet**, không nằm trong repo.
 
 ## Ai thấy gì

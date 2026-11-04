@@ -1,5 +1,5 @@
 // ============================================================
-// QUẢN TRỊ TRÊN SHEET: menu "Hiền Nga App", tạo tab, làm mới đệm.
+// QUẢN TRỊ TRÊN SHEET: menu "📱 App", tạo tab, làm mới đệm.
 // ============================================================
 
 function onOpen() {
