@@ -100,7 +100,8 @@ function getAll(ti) {
   // Chưa đăng nhập: máy chủ KHÔNG gửi giá đại lý xuống trình duyệt.
   if (!ti) gia.data.forEach(function (p) { p.dl = 0; });
   var anh = quaDem('anh', docAnh);
-  return { status: 'ok', data: gia.data, anh: anh.data || {}, luc: gia.luc, daDangNhap: !!ti };
+  var capNhat = PropertiesService.getScriptProperties().getProperty('CAP_NHAT_GIA') || '';
+  return { status: 'ok', data: gia.data, anh: anh.data || {}, luc: gia.luc, capNhat: capNhat, daDangNhap: !!ti };
 }
 
 function getTonKho(ti) {

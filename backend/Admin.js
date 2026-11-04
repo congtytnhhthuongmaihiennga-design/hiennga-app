@@ -16,7 +16,11 @@ function onOpen() {
 function onEdit(e) {
   try {
     var ten = e && e.range && e.range.getSheet().getName();
-    if (ten === TAB.gia) demXoa('gia');
+    if (ten === TAB.gia) {
+      demXoa('gia');
+      // Ngày cập nhật bảng giá – app hiện "Cập nhật dd/mm/yyyy" trên trang chủ.
+      PropertiesService.getScriptProperties().setProperty('CAP_NHAT_GIA', new Date().toISOString());
+    }
     else if (ten === TAB.anh) demXoa('anh');
     else if (ten === TAB.tonkho || ten === TAB.kho || ten === TAB.noima) demXoa('tonkho');
     else if (ten === TAB.users) CacheService.getScriptCache().remove('ds_khoa');

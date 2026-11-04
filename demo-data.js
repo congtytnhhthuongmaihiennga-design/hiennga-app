@@ -26,7 +26,9 @@
     kc: '', loai: chon(['Gốc xi măng', 'Epoxy']), dvt: 'bao', dg: '25 kg/bao', ny: (120 + rnd(20) * 10) * 1000, dl: (100 + rnd(15) * 10) * 1000, gc: '', mau: chon(['Trắng', 'Xám']), congNang: '', tinhNang: '', hoaVan: '', men: '', dungTich: '' });
   for (i = 1; i <= 10; i++) data.push({ ma: 'VS' + ('00' + i).slice(-3), hang: chon(HANG), nhom: 'Thiết bị vệ sinh', ten: chon(['Bồn cầu một khối mẫu', 'Lavabo đặt bàn mẫu', 'Vòi sen mẫu', 'Sen tắm mẫu']) + ' ' + i,
     kc: '', loai: chon(['Bồn cầu', 'Lavabo', 'Vòi', 'Sen']), dvt: 'bộ', dg: '', ny: (900 + rnd(60) * 50) * 1000, dl: (750 + rnd(50) * 50) * 1000, gc: chon(['', 'Bảo hành 5 năm']), mau: 'Trắng', congNang: '', tinhNang: '', hoaVan: '', men: '', dungTich: '' });
-  for (i = 1; i <= 10; i++) data.push({ ma: 'SM' + ('00' + i).slice(-3), hang: chon(HANG), nhom: 'Sơn', ten: chon(['Sơn nội thất mẫu', 'Sơn ngoại thất mẫu', 'Sơn lót mẫu']) + ' ' + i,
+  for (i = 1; i <= 8; i++) data.push({ ma: 'BM' + ('00' + i).slice(-3), hang: chon(HANG), nhom: 'Thiết bị nhà bếp', ten: chon(['Bếp từ đôi mẫu', 'Máy hút mùi mẫu', 'Chậu rửa inox mẫu', 'Vòi rửa chén mẫu']) + ' ' + i,
+    kc: '', loai: chon(['Bếp từ', 'Hút mùi', 'Chậu rửa', 'Vòi']), dvt: 'cái', dg: '', ny: (2500 + rnd(80) * 100) * 1000, dl: (2100 + rnd(60) * 100) * 1000, gc: chon(['', 'Bảo hành 3 năm']), mau: chon(['Đen', 'Inox']), congNang: '', tinhNang: '', hoaVan: '', men: '', dungTich: '' });
+  for (i = 1; i <= 10; i++) data.push({ ma: 'SM' +('00' + i).slice(-3), hang: chon(HANG), nhom: 'Sơn', ten: chon(['Sơn nội thất mẫu', 'Sơn ngoại thất mẫu', 'Sơn lót mẫu']) + ' ' + i,
     kc: '', loai: chon(['Nội thất', 'Ngoại thất', 'Sơn lót']), dvt: 'thùng', dg: '', ny: (800 + rnd(80) * 25) * 1000, dl: (650 + rnd(60) * 25) * 1000, gc: '', mau: chon(['Trắng', 'Kem', 'Xanh nhạt']), congNang: '', tinhNang: '', hoaVan: '', men: chon(['Bóng', 'Mờ']), dungTich: chon(['5 lít', '18 lít']) });
 
   data.forEach(function (p) {
@@ -52,7 +54,7 @@
     if (action === 'getAll') {
       var ds = sao(data);
       if (!sess) ds.forEach(function (x) { x.dl = 0; });
-      return tre({ status: 'ok', data: ds, anh: {}, luc: new Date().toISOString(), daDangNhap: !!sess });
+      return tre({ status: 'ok', data: ds, anh: {}, luc: new Date().toISOString(), capNhat: '2026-11-05T08:00:00+07:00', daDangNhap: !!sess });
     }
     if (action === 'getTonKho') {
       if (!sess) return tre({ status: 'error', msg: 'need_login' });

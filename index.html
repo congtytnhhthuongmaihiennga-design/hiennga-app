@@ -4,42 +4,36 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="theme-color" content="#1F5FA8"/>
-<title>Bảng giá Hiền Nga</title>
-<link rel="stylesheet" href="style.css?v=1">
+<meta name="theme-color" content="#1E3FA8"/>
+<title>Bảng giá Hiển Nga</title>
+<link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 
-<!-- Màn hình đăng nhập -->
+<!-- Màn hình đăng nhập (chỉ mở khi bấm "Đăng nhập") -->
 <div id="login" class="login" hidden>
+  <button type="button" class="login-back" data-act="dong-dang-nhap"><span id="login-back-ic"></span> Xem bảng giá</button>
   <div class="login-head">
     <div class="logo logo-lg" id="login-logo"></div>
     <div class="login-ten" id="login-ten"></div>
     <div class="login-sub" id="login-sub"></div>
   </div>
   <form class="login-box" id="login-form" autocomplete="on">
-    <h1>Đăng nhập</h1>
+    <h1>Đăng nhập đại lý / nhân viên</h1>
+    <p class="login-note">Để xem giá đại lý và tồn kho.</p>
     <label>Tài khoản<input id="inp-user" type="text" autocomplete="username" autocapitalize="none" required></label>
     <label>Mật khẩu<input id="inp-pass" type="password" autocomplete="current-password" required></label>
     <p class="login-err" id="login-err"></p>
     <button type="submit" class="btn btn-chinh" id="btn-login">Đăng nhập</button>
-    <button type="button" class="btn btn-vien" data-act="xem-khach">👀 Xem giá niêm yết (không cần đăng nhập)</button>
     <p class="login-foot" id="login-foot"></p>
   </form>
 </div>
 
 <!-- App -->
 <div id="app" hidden>
-  <header class="topbar">
-    <button type="button" class="brand" data-act="home" title="Trang chủ">
-      <span class="logo" id="top-logo"></span>
-      <span class="brand-text"><b id="top-ten"></b><small id="top-user"></small></span>
-    </button>
-    <span class="sync" id="sync" title="Trạng thái dữ liệu"></span>
-    <button type="button" class="acct-btn" data-act="menu" aria-label="Tài khoản">👤 ▾</button>
-    <div class="acct-menu" id="acct-menu" hidden></div>
-  </header>
-  <div class="demo-bar" id="demo-bar" hidden>CHẾ ĐỘ DÙNG THỬ – dữ liệu giả, chưa nối Google Sheet</div>
+  <header class="topbar" id="topbar"></header>
+  <div class="acct-menu" id="acct-menu" hidden></div>
+  <div class="demo-bar" id="demo-bar" hidden>Chế độ dùng thử – dữ liệu giả, chưa nối Google Sheet</div>
   <div class="loi-bar" id="loi-bar" hidden></div>
   <main id="main"></main>
   <nav class="bottom-nav" id="bottom-nav"></nav>
@@ -50,7 +44,7 @@
 <section class="sheet" id="sheet" hidden aria-modal="true" role="dialog"></section>
 <div class="toast" id="toast" hidden></div>
 
-<script src="config.js?v=2"></script>
-<script src="app.js?v=2"></script>
+<script src="config.js?v=3"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>
