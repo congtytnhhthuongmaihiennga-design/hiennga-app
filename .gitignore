@@ -1,0 +1,8 @@
+# Dữ liệu công ty – không đưa lên repo public
+*.xlsx
+*.xls
+*.csv
+
+# Script ID của dự án Apps Script
+.clasp.json
+backend/.clasp.json
