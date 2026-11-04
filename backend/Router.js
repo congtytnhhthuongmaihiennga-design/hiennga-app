@@ -22,6 +22,7 @@ function traVe(obj, cb) {
 function xuLy(p) {
   try {
     if (p.k !== APP_KEY) return { status: 'error', msg: 'unauthorized' };
+    khoiTaoLanDau();
     var a = p.action || '', ti = tokInfo(p.t);
     var laAdmin = !!(ti && ti.role === 'admin');
     var cam = { status: 'error', msg: 'forbidden' };

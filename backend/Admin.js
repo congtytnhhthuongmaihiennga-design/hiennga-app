@@ -42,6 +42,20 @@ function khoiTaoSheet() {
   try { SpreadsheetApp.getUi().alert(msg); } catch (e) { Logger.log(msg); }
 }
 
+// Sheet mới tinh (chưa có tab nào của app) thì tự tạo đủ tab, khỏi phải bấm menu.
+// Chỉ khi THIẾU TẤT CẢ: tab bị đổi tên sau này vẫn báo lỗi rõ, không tạo tab trống thay thế.
+function khoiTaoLanDau() {
+  var c = CacheService.getScriptCache();
+  if (c.get('da_khoi_tao')) return;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var coTab = Object.keys(TAB).some(function (k) { return !!ss.getSheetByName(TAB[k]); });
+  if (!coTab) {
+    Object.keys(TIEU_DE).forEach(function (k) { khoiTaoTab(TAB[k], TIEU_DE[k]); });
+    muoi();
+  }
+  c.put('da_khoi_tao', '1', 21600);
+}
+
 function xoaDem() {
   demXoa('gia'); demXoa('anh'); demXoa('tonkho');
   CacheService.getScriptCache().remove('ds_khoa');
