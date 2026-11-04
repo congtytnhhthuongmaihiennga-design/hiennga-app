@@ -13,7 +13,7 @@ window.APP_CONFIG = {
   MAU_DAM: '#123F75',
 
   // Địa chỉ Web App Apps Script (có sau khi Deploy). Để trống = chạy dữ liệu dùng thử.
-  APPS_URL: '',
+  APPS_URL: 'https://script.google.com/macros/s/AKfycby2E2AXuXTAKxf2VfPi9LmEcJYyOkaUDFB0aY6vjQXn-qtP4qjgG_yD6_w00q7NVteI/exec',
   // Khóa gắn theo mọi yêu cầu, khớp APP_KEY trong backend/Config.js.
   APP_KEY: 'aMaqlb4vNcw0G6oqMEgK5ULv2z8S',
 

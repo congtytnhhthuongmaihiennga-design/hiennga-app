@@ -23,7 +23,8 @@
   };
 
   var S = {
-    sess: LS.get('sess'), items: [], byMa: {}, anh: {}, ton: null, tonLoi: '', tonDangTai: false,
+    // Phiên của chế độ dùng thử không dùng được với máy chủ thật (và ngược lại).
+    sess: (function (s) { return s && (s.token === 'demo') === DEMO ? s : null; })(LS.get('sess')), items: [], byMa: {}, anh: {}, ton: null, tonLoi: '', tonDangTai: false,
     dangTai: false, loi: '', nhom: '', hang: '', q: '', qHome: '', loc: {}, sort: '', trang: 1,
     sp: '', anhIdx: 0, moTuApp: false
   };
@@ -80,7 +81,7 @@
   function nhomTheoKey(k) { return dsNhom().filter(function (g) { return g.key === k; })[0] || { key: 'all', ten: 'Tất cả sản phẩm', icon: '🗂️' }; }
 
   // ---------- Dữ liệu ----------
-  function khoaDem() { return 'gia_' + (S.sess ? S.sess.role : 'khach'); }
+  function khoaDem() { return (DEMO ? 'demo_' : '') + 'gia_' + (S.sess ? S.sess.role : 'khach'); }
   function nhanGia(res) {
     S.items = (res.data || []).map(function (p) {
       p._nhom = nhomCua(p.nhom);
@@ -493,7 +494,7 @@
     }).then(function () { nut.disabled = false; nut.textContent = 'Đăng nhập'; });
   }
   function xoaPhien() {
-    ['admin', 'nv', 'khachhang'].forEach(function (r) { LS.del('gia_' + r); });
+    ['admin', 'nv', 'khachhang'].forEach(function (r) { LS.del('gia_' + r); LS.del('demo_gia_' + r); });
     LS.del('sess'); S.sess = null; S.ton = null; S.tonLoi = ''; S.items = []; S.byMa = {};
   }
   function dangXuat() {
