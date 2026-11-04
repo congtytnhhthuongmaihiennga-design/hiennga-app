@@ -26,7 +26,7 @@ function xuLy(p) {
     var laAdmin = !!(ti && ti.role === 'admin');
     var cam = { status: 'error', msg: 'forbidden' };
     switch (a) {
-      case 'ping':      return { status: 'ok', role: ti ? ti.role : '' };
+      case 'ping':      return { status: 'ok', role: ti ? ti.role : '', tabs: SpreadsheetApp.getActiveSpreadsheet().getSheets().map(function (s) { return s.getName(); }) };
       case 'getAll':    return getAll(ti);
       case 'getTonKho': return ti ? getTonKho(ti) : { status: 'error', msg: 'need_login' };
       case 'login':     return login(p);
