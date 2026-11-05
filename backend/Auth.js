@@ -59,7 +59,7 @@ function login(p) {
     cache.remove(kSai);
     if (Math.random() < 0.1) donToken();
     function o(k) { return c[k] === undefined ? '' : chu(r[c[k]]); }
-    return { status: 'ok', token: taoToken(role, user), role: role, username: user, name: o('ten') || user, tenCty: o('cty') };
+    return { status: 'ok', token: taoToken(role, user), role: role, username: user, name: o('ten') || user, tenCty: o('cty'), sdt: o('sdt') };
   }
   cache.put(kSai, String(soSai + 1), 600);
   return { status: 'error', msg: 'Sai tài khoản hoặc mật khẩu.' };

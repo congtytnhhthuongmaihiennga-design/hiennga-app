@@ -332,6 +332,10 @@
   }
   function theoHash() {
     var h = docHash();
+    // Quét QR trên tem -> "#xem=MÃ": trang xem mẫu riêng (không giá đại lý, không thanh điều hướng).
+    S.xem = h.xem || ''; S.xemCH = h.ch || ''; S.xemDT = h.dt || '';
+    document.body.classList.toggle('che-xem', !!S.xem);
+    if (S.xem) { S.anhIdx = 0; if (!$('app').hidden) veXemMau(); return; }
     var nhomMoi = h.v === 'ganday' ? 'ganday' : (h.n || ''), hangMoi = h.h || '';
     if (nhomMoi !== S.nhom || hangMoi !== S.hang) {
       S.nhom = nhomMoi; S.hang = hangMoi; S.loc = {}; S.q = ''; S.trang = 1; S.sort = '';
@@ -346,6 +350,7 @@
   // ---------- Vẽ ----------
   function veLai() {
     if ($('app').hidden) return;
+    if (S.xem) { veXemMau(); return; }
     var dangGo = document.activeElement && /^tk-/.test(document.activeElement.id);
     if (dangGo) veKetQua(); else veTrang();
     // Chi tiết đang mở thì vẽ lại (giá/tồn kho vừa về); mở bằng link (#sp=…) trước khi tải xong thì giờ mới mở.
@@ -353,6 +358,7 @@
     if (S.sp && S.items.length && (sh.hidden || sh.getAttribute('data-loai') === 'sp')) moChiTiet(!sh.hidden);
   }
   function veTrang() {
+    if (S.xem) { veXemMau(); return; }
     veTopbar();
     if (S.nhom === 'ganday') veGanDay();
     else if (S.nhom) veDanhSach();
@@ -460,6 +466,7 @@
     var chips = '<button type="button" class="chip' + (nl ? ' loc-on' : '') + '" data-act="loc">' + ic('loc', 'ic-sm') + 'Lọc' + (nl ? ' (' + nl + ')' : '') + '</button>';
     // Đã đăng nhập: lọc nhanh "Còn hàng" (bỏ mã tồn ≤ 0).
     if (S.sess && S.ton) chips += '<button type="button" class="chip chip-ton' + (S.chiConHang ? ' on' : '') + '" data-act="con-hang"><span class="cham"></span>Còn hàng</button>';
+    if (S.sess) chips += '<button type="button" class="chip" data-act="tem-ds">' + ic('tag', 'ic-sm') + 'In tem cả danh sách</button>';
     if (dsHang.length > 1) chips += '<button type="button" class="chip' + (S.hang ? '' : ' on') + '" data-hang="">Tất cả hãng</button>' +
       dsHang.map(function (h) {
         var l = logoHang(h);
@@ -563,7 +570,8 @@
     // Thanh hành động: hỏi Zalo (chép sẵn thông tin mã), gọi đặt hàng, sao chép.
     html += '<div class="sh-foot">' + (sdt()
       ? '<button type="button" class="btn btn-chinh" data-act="zalo" data-ma="' + esc(p.ma) + '">' + ic('chat') + 'Hỏi Zalo</button><a class="btn btn-do" href="tel:' + sdt() + '">' + ic('phone') + 'Gọi đặt</a>'
-      : '') + '<button type="button" class="btn btn-vien btn-vuong" data-act="chep" data-ma="' + esc(p.ma) + '" aria-label="Sao chép báo giá">' + ic('copy') + '</button></div>';
+      : '') + (S.sess ? '<button type="button" class="btn btn-vien btn-vuong" data-act="them-tem" data-ma="' + esc(p.ma) + '" aria-label="Thêm vào giỏ in tem">' + ic('tag') + '</button>' : '') +
+      '<button type="button" class="btn btn-vien btn-vuong" data-act="chep" data-ma="' + esc(p.ma) + '" aria-label="Sao chép báo giá">' + ic('copy') + '</button></div>';
 
     var cuon = giuAnh ? $('sheet').scrollTop : 0;
     moSheet(html, 'sp');
@@ -722,7 +730,7 @@
     nut.disabled = true; nut.textContent = 'Đang đăng nhập…'; $('login-err').textContent = '';
     api('login', { username: u, password: pw }, true).then(function (res) {
       if (!res || res.status !== 'ok') throw new Error((res && res.msg) || 'Đăng nhập thất bại');
-      S.sess = { token: res.token, role: res.role, username: res.username, name: res.name, tenCty: res.tenCty };
+      S.sess = { token: res.token, role: res.role, username: res.username, name: res.name, tenCty: res.tenCty, sdt: res.sdt || '' };
       LS.set('sess', S.sess); S.ton = null; S.tonLoi = '';
       $('inp-pass').value = '';
       hienApp();
@@ -750,14 +758,148 @@
     if (!s) return;
     m.innerHTML = '<div class="who"><b>' + esc(s.name || s.username) + '</b>' + TEN_VT[s.role] + (s.tenCty ? ' · ' + esc(s.tenCty) : '') + '</div>' +
       (s.role === 'admin' ? '<button type="button" data-act="quan-ly">' + ic('users') + 'Quản lý tài khoản</button><button type="button" data-act="lam-moi-may-chu">' + ic('refresh') + 'Lấy dữ liệu mới từ Sheet</button>' : '') +
+      '<button type="button" data-act="gio-tem">' + ic('tag') + 'Giỏ in tem giá' + (S.gioTem.length ? ' (' + S.gioTem.length + ' mã)' : '') + '</button>' +
       '<button type="button" data-act="thu-lai">' + ic('refresh') + 'Tải lại dữ liệu</button>' +
       '<button type="button" data-act="dang-xuat">' + ic('logout') + 'Đăng xuất</button>';
     m.hidden = false;
   }
 
+  // ============================================================
+  // IN TEM GIÁ (đại lý / nhân viên): giỏ tem -> chọn khổ -> in (hoặc Lưu PDF).
+  // Tem: logo Hiển Nga, tên, mã, kích thước, giá đã VAT, QR -> trang xem mẫu (#xem=MÃ&ch=…&dt=…).
+  // Giỏ tem + cấu hình chỉ lưu trên máy này (giá sửa trên tem không gửi lên hệ thống).
+  // ============================================================
+  var KHO_TEM = {
+    the: { ten: 'Thẻ 90×55 mm', w: 90, h: 55 },
+    nho: { ten: 'Tem nhiệt 50×30 mm', w: 50, h: 30 },
+    a4: { ten: 'Giấy A4 · 10 tem', w: 95, h: 54, a4: true },
+    tuy: { ten: 'Tự nhập kích thước', w: 60, h: 40 }
+  };
+  S.gioTem = LS.get('giotem') || [];   // [{ma, so, gia}]  gia = '' -> dùng giá niêm yết
+  S.temCfg = LS.get('temcfg') || { kho: 'the', w: 60, h: 40 };
+  S.daIn = LS.get('tem_dain') || {};   // ma -> {gia, ngay}: để nhắc in lại khi giá đổi
+  function luuTem() { LS.set('giotem', S.gioTem); LS.set('temcfg', S.temCfg); }
+  function themTem(ma, so) {
+    var it = S.gioTem.filter(function (x) { return x.ma === ma; })[0];
+    if (it) it.so += so || 1; else S.gioTem.push({ ma: ma, so: so || 1, gia: '' });
+    luuTem();
+  }
+  function giaTem(it) { var p = S.byMa[it.ma]; return it.gia !== '' && it.gia != null ? Number(it.gia) || 0 : (p ? p.ny || 0 : 0); }
+  function khoTem() { var k = KHO_TEM[S.temCfg.kho] || KHO_TEM.the; return S.temCfg.kho === 'tuy' ? { ten: k.ten, w: Number(S.temCfg.w) || 60, h: Number(S.temCfg.h) || 40 } : k; }
+  function linkXem(ma) {
+    var ch = S.temCfg.tenCH || '', dt = String(S.temCfg.sdtCH || '').replace(/[^\d+]/g, '');
+    return location.origin + location.pathname + '#xem=' + encodeURIComponent(ma) + (ch ? '&ch=' + encodeURIComponent(ch) : '') + (dt ? '&dt=' + dt : '');
+  }
+  function qrSvg(text) { try { return window.QR ? window.QR.svg(text, 2) : ''; } catch (e) { return ''; } }
+  function giaTemChu(it) { var g = giaTem(it); return g > 0 ? Number(g).toLocaleString('vi-VN') : 'Liên hệ'; }
+
+  // Một tem: dựng ở khổ gốc (90×55 hoặc 50×30) rồi phóng/thu cho vừa khổ thật.
+  function htmlTem(it, kho) {
+    var p = S.byMa[it.ma] || { ma: it.ma, _ten: it.ma, kc: '', dvt: '', _vt: '', _cap: '' };
+    var lon = kho.h >= 40, bw = lon ? 90 : 50, bh = lon ? 55 : 30;
+    var tl = Math.min(kho.w / bw, kho.h / bh), dv = p.dvt ? 'đ/' + p.dvt : 'đ';
+    // Tem lớn: logo đầy đủ (có chữ HIENNGA); tem nhỏ: chỉ biểu tượng cho khỏi nhòe chữ.
+    var logo = '<img class="t-logo" src="' + esc((lon ? CFG.LOGO_DAY_DU : CFG.LOGO) || CFG.LOGO || '') + '" alt="">';
+    var qr = '<div class="t-qr">' + qrSvg(linkXem(p.ma)) + '</div>';
+    var ngay = new Date(), ngayIn = ('0' + ngay.getDate()).slice(-2) + '/' + ('0' + (ngay.getMonth() + 1)).slice(-2) + '/' + ngay.getFullYear();
+    var noi = lon
+      ? '<div class="t-dau">' + logo + '<div class="t-ten">' + esc(p._ten) + '</div>' + qr + '</div>' +
+        '<div class="t-dong"><span>Mã số / Code:</span><b class="t-ke">' + esc(p.ma) + '</b></div>' +
+        '<div class="t-dong"><span>Kích thước:</span><b class="t-ke">' + esc(p.kc || '—') + '</b>' + (p._vt ? '<span class="t-phu">' + p._vt + ' viên/thùng</span>' : '') + (p._cap ? '<span class="t-cap">Loại ' + p._cap + '</span>' : '') + '</div>' +
+        '<div class="t-dong t-gia-dong"><span>Giá đã gồm VAT:</span><b class="t-ke t-gia">' + giaTemChu(it) + '</b><span class="t-dv">' + (giaTem(it) > 0 ? esc(dv) : '') + '</span></div>' +
+        '<div class="t-chan">' + esc(CFG.TEN_APP || '') + ' · Quét mã QR xem mẫu · In ' + ngayIn + '</div>'
+      : '<div class="t-nho-trai">' + logo + '<div class="t-ten">' + esc(p._ten) + '</div><div class="t-ma">' + esc(p.ma) + (p.kc ? ' · ' + esc(p.kc) : '') + '</div>' +
+        '<div class="t-gia">' + giaTemChu(it) + '<small>' + (giaTem(it) > 0 ? esc(dv) : '') + '</small></div></div>' + qr;
+    return '<div class="tem-o" style="width:' + kho.w + 'mm;height:' + kho.h + 'mm"><div class="tem ' + (lon ? 'tem-lon' : 'tem-nho') + '" style="width:' + bw + 'mm;height:' + bh + 'mm;transform:scale(' + tl + ')">' + noi + '</div></div>';
+  }
+  function danhSachTemIn() {
+    var ds = [];
+    S.gioTem.forEach(function (it) { for (var i = 0; i < Math.max(0, it.so | 0); i++) ds.push(it); });
+    return ds;
+  }
+  function maDoiGia() {
+    return Object.keys(S.daIn).filter(function (m) { var p = S.byMa[m]; return p && p.ny > 0 && S.daIn[m].ny != null && Number(S.daIn[m].ny) !== p.ny; });
+  }
+
+  function moGioTem() {
+    var cfg = S.temCfg;
+    // Lần đầu: liên hệ trên trang QR lấy theo tài khoản đang đăng nhập (đại lý = cửa hàng của họ).
+    if (cfg.tenCH === undefined && S.sess) { cfg.tenCH = S.sess.tenCty || S.sess.name || ''; cfg.sdtCH = S.sess.sdt || ''; luuTem(); }
+    var kho = khoTem(), tong = danhSachTemIn().length, doi = maDoiGia();
+    var html = dauSheet('Giỏ in tem giá') + '<div class="sh-body">';
+    if (doi.length) html += '<div class="tem-canh">' + ic('refresh', 'ic-sm') + '<span>' + doi.length + ' mã đã đổi giá so với tem in trước</span><button type="button" class="btn btn-chinh btn-nho" data-act="tem-doi-gia">Thêm vào giỏ</button></div>';
+    html += '<div class="sec">Khổ tem</div><div class="chips wrap">' + Object.keys(KHO_TEM).map(function (k) {
+      return '<button type="button" class="chip' + (cfg.kho === k ? ' on' : '') + '" data-tem-kho="' + k + '">' + KHO_TEM[k].ten + '</button>';
+    }).join('') + '</div>';
+    if (cfg.kho === 'tuy') html += '<div class="tem-cd"><label>Rộng (mm)<input type="number" min="25" max="150" data-tem-cfg="w" value="' + esc(cfg.w) + '"></label><label>Cao (mm)<input type="number" min="15" max="120" data-tem-cfg="h" value="' + esc(cfg.h) + '"></label></div>';
+    html += '<div class="sec">Khi khách quét QR – hiện liên hệ của</div><div class="tem-cd"><label>Tên cửa hàng<input data-tem-cfg="tenCH" value="' + esc(cfg.tenCH || '') + '" placeholder="Cửa hàng VLXD Minh Phát"></label><label>Số điện thoại<input data-tem-cfg="sdtCH" inputmode="tel" value="' + esc(cfg.sdtCH || '') + '" placeholder="09…"></label></div>';
+    html += '<div class="sec">Mã cần in (' + S.gioTem.length + ' mã · ' + tong + ' tem)</div>' +
+      '<div class="tem-them"><input id="tem-ma" placeholder="Gõ mã để thêm, vd GHT.BC6600T" autocapitalize="characters"><button type="button" class="btn btn-vien btn-nho" data-act="tem-them-ma">Thêm</button></div>';
+    if (!S.gioTem.length) html += '<p class="mo" style="margin:10px 0">Chưa có mã nào. Mở sản phẩm → bấm nút ' + ic('tag', 'ic-sm') + ', hoặc ở danh sách bấm "In tem cả danh sách".</p>';
+    html += '<div class="tem-ds">' + S.gioTem.map(function (it, i) {
+      var p = S.byMa[it.ma];
+      return '<div class="tem-dong"><div class="tem-dong-ten"><b>' + esc(p ? p._ten : it.ma) + '</b><small>' + esc(it.ma) + (p && p.ny ? ' · niêm yết ' + tien(p.ny) : '') + '</small></div>' +
+        '<label class="tem-gia">Giá in<input inputmode="numeric" data-tem-gia="' + i + '" value="' + esc(it.gia !== '' && it.gia != null ? it.gia : (p && p.ny ? p.ny : '')) + '"></label>' +
+        '<div class="tem-sl"><button type="button" data-tem-sl="' + i + '" data-d="-1" aria-label="Bớt">−</button><span>' + it.so + '</span><button type="button" data-tem-sl="' + i + '" data-d="1" aria-label="Thêm">＋</button></div></div>';
+    }).join('') + '</div>';
+    if (S.gioTem.length) html += '<div class="sec">Xem trước</div><div class="tem-xem">' + htmlTem(S.gioTem[0], kho) + '</div>' +
+      '<p class="mo" style="margin-top:8px">Bấm In → chọn máy in tem (hoặc "Lưu dưới dạng PDF"). Khổ giấy trong hộp thoại in đặt đúng ' + kho.w + '×' + kho.h + ' mm' + (kho.a4 ? ' – ở đây là giấy A4' : '') + ', lề = Không.</p>';
+    html += '</div><div class="sh-foot"><button type="button" class="btn btn-vien" data-act="tem-xoa-het">Xóa hết</button><button type="button" class="btn btn-chinh" data-act="tem-in"' + (tong ? '' : ' disabled') + '>' + ic('tag') + 'In ' + tong + ' tem</button></div>';
+    var cuon = $('sheet').getAttribute('data-loai') === 'tem' ? $('sheet').scrollTop : 0;
+    moSheet(html, 'tem');
+    $('sheet').scrollTop = cuon;
+  }
+
+  function inTem() {
+    var kho = khoTem(), ds = danhSachTemIn();
+    if (!ds.length) return;
+    var vung = $('vung-in'), html;
+    if (kho.a4) {
+      var trang = [];
+      for (var i = 0; i < ds.length; i += 10) trang.push('<div class="in-a4">' + ds.slice(i, i + 10).map(function (it) { return htmlTem(it, kho); }).join('') + '</div>');
+      html = trang.join('');
+      $('kieu-in').textContent = '@page{size:A4;margin:0}';
+    } else {
+      html = ds.map(function (it) { return '<div class="in-mot">' + htmlTem(it, kho) + '</div>'; }).join('');
+      $('kieu-in').textContent = '@page{size:' + kho.w + 'mm ' + kho.h + 'mm;margin:0}';
+    }
+    vung.innerHTML = html; vung.hidden = false;
+    document.body.classList.add('dang-in');
+    var ngay = new Date().toISOString();
+    S.gioTem.forEach(function (it) { S.daIn[it.ma] = { gia: giaTem(it), ny: (S.byMa[it.ma] || {}).ny || 0, ngay: ngay }; });
+    LS.set('tem_dain', S.daIn);
+    var xong = function () { document.body.classList.remove('dang-in'); vung.hidden = true; vung.innerHTML = ''; window.removeEventListener('afterprint', xong); };
+    window.addEventListener('afterprint', xong);
+    // Chờ ảnh logo tải xong rồi mới mở hộp thoại in.
+    var anh = vung.querySelectorAll('img'), con = anh.length, mo = function () { setTimeout(function () { window.print(); }, 150); };
+    if (!con) mo(); else anh.forEach(function (im) { if (im.complete) { if (--con === 0) mo(); } else im.onload = im.onerror = function () { if (--con === 0) mo(); }; });
+  }
+
+  // ---------- Trang xem mẫu (quét QR trên tem) ----------
+  function veXemMau() {
+    $('topbar').innerHTML = ''; $('bottom-nav').innerHTML = '';
+    var p = S.byMa[S.xem];
+    if (!p) { $('main').innerHTML = S.items.length ? '<div class="trong">' + ic('search') + '<b>Không tìm thấy mã ' + esc(S.xem) + '</b></div>' : khungTai(); return; }
+    document.title = p._ten;
+    var anh = anhCua(p.ma), idx = Math.min(S.anhIdx || 0, Math.max(anh.length - 1, 0)), lg = p.hang ? logoHang(p.hang) : '';
+    var tt = [['Hãng', p.hang ? tenHang(p.hang) : ''], ['Mã sản phẩm', p.ma], ['Kích cỡ / Quy cách', p.kc], ['Loại', p.loai], ['Đóng gói', p.dg], ['Màu', p.mau], ['Công năng', p.congNang],
+      ['Tính năng', p.tinhNang], ['Hoa văn', p.hoaVan], ['Men / bề mặt', p.men], ['Dung tích', p.dungTich]].filter(function (r) { return r[1]; });
+    var dt = String(S.xemDT || '').replace(/[^\d+]/g, '');
+    var html = '<div class="xem">' +
+      '<div class="anh-o xem-anh' + (anh.length ? '' : ' chua-anh') + '">' + (anh.length ? '<img class="anh" alt="" src="' + esc(coAnh(anh[idx], 1400)) + '" data-icon="' + iconNhom(p) + '">' : ic(iconNhom(p))) +
+      (anh.length > 1 ? '<button type="button" class="anh-nav trai" data-anh="-1" aria-label="Ảnh trước">' + ic('chevL') + '</button><button type="button" class="anh-nav phai" data-anh="1" aria-label="Ảnh sau">' + ic('chevR') + '</button><span class="anh-so">' + (idx + 1) + '/' + anh.length + '</span>' : '') + '</div>' +
+      '<div class="xem-than">' + (lg ? '<img class="xem-logo" src="' + esc(lg) + '" alt="">' : '') +
+      '<h1 class="ct-ten">' + esc(p._ten) + '</h1><div class="ct-tags">' + nhanCap(p) + (p.kc ? '<span class="tag">' + esc(p.kc) + '</span>' : '') + '</div>' +
+      (tt.length ? '<div class="box" style="margin-top:14px"><table class="tt">' + tt.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>' : '') +
+      (S.xemCH || dt ? '<div class="xem-lh"><div><small>Liên hệ mua hàng</small><b>' + esc(S.xemCH || '') + '</b>' + (dt ? '<span>' + esc(dt) + '</span>' : '') + '</div>' +
+        (dt ? '<a class="lh-btn lh-zalo" href="https://zalo.me/' + dt + '" target="_blank" rel="noopener">' + ic('chat', 'ic-sm') + 'Zalo</a><a class="lh-btn lh-goi" href="tel:' + dt + '">' + ic('phone', 'ic-sm') + 'Gọi</a>' : '') + '</div>' : '') +
+      '</div></div>';
+    $('main').innerHTML = html;
+  }
+
   // ---------- Bấm (một chỗ xử lý cho cả app) ----------
   document.addEventListener('click', function (e) {
-    var el = e.target.closest('[data-act],[data-sp],[data-nhom],[data-nav],[data-hang],[data-hang-home],[data-loc],[data-sort],[data-anh],[data-user]');
+    var el = e.target.closest('[data-act],[data-sp],[data-nhom],[data-nav],[data-hang],[data-hang-home],[data-loc],[data-sort],[data-anh],[data-user],[data-tem-kho],[data-tem-sl]');
     var menu = $('acct-menu');
     if (!menu.hidden && !e.target.closest('#acct-menu') && !(el && el.getAttribute('data-act') === 'menu')) menu.hidden = true;
     if (!el) { if (e.target.id === 'sheet-nen') dongSheet(); return; }
@@ -767,9 +909,19 @@
     if (el.hasAttribute('data-nav')) return diToi(el.getAttribute('data-nav'), '');
     if (el.hasAttribute('data-hang-home')) return diToi('all', el.getAttribute('data-hang-home'));
     if (el.hasAttribute('data-hang')) { S.hang = el.getAttribute('data-hang'); S.trang = 1; S.loc = {}; var hh = docHash(); hh.h = S.hang; ghiHash(hh, true); veTrang(); return; }
+    if (el.hasAttribute('data-tem-kho')) { S.temCfg.kho = el.getAttribute('data-tem-kho'); luuTem(); moGioTem(); return; }
+    if (el.hasAttribute('data-tem-sl')) {
+      var ti = S.gioTem[Number(el.getAttribute('data-tem-sl'))];
+      if (ti) { ti.so += Number(el.getAttribute('data-d')); if (ti.so <= 0) S.gioTem.splice(S.gioTem.indexOf(ti), 1); luuTem(); moGioTem(); }
+      return;
+    }
     if (el.hasAttribute('data-sort')) { S.sort = el.getAttribute('data-sort'); S.trang = 1; veTrang(); moLoc(); return; }
     if (el.hasAttribute('data-loc')) { S.loc[el.getAttribute('data-loc')] = el.getAttribute('data-v'); S.trang = 1; veTrang(); moLoc(); return; }
-    if (el.hasAttribute('data-anh')) { var n = anhCua(S.sp).length; S.anhIdx = (S.anhIdx + Number(el.getAttribute('data-anh')) + n) % n; moChiTiet(true); return; }
+    if (el.hasAttribute('data-anh')) {
+      var n = anhCua(S.xem || S.sp).length; S.anhIdx = (S.anhIdx + Number(el.getAttribute('data-anh')) + n) % n;
+      if (S.xem) veXemMau(); else moChiTiet(true);
+      return;
+    }
     if (el.hasAttribute('data-user')) { formUser(dsUser[Number(el.getAttribute('data-user'))]); return; }
     switch (a) {
       case 'home': S.qHome = ''; diToi('', ''); break;
@@ -779,6 +931,21 @@
       case 'loc': moLoc(); break;
       case 'xoa-loc': S.loc = {}; S.chiConHang = false; veTrang(); moLoc(); break;
       case 'con-hang': S.chiConHang = !S.chiConHang; S.trang = 1; veTrang(); break;
+      case 'them-tem': themTem(el.getAttribute('data-ma')); toast('Đã thêm vào giỏ tem (' + S.gioTem.length + ' mã) – mở ở menu tài khoản'); break;
+      case 'tem-ds': {
+        var dsIn = dsHienThi().slice(0, 300);
+        dsIn.forEach(function (p) { themTem(p.ma); });
+        toast('Đã thêm ' + dsIn.length + ' mã vào giỏ tem'); moGioTem(); break;
+      }
+      case 'gio-tem': menu.hidden = true; moGioTem(); break;
+      case 'tem-doi-gia': maDoiGia().forEach(function (m) { if (!S.gioTem.some(function (x) { return x.ma === m; })) themTem(m); }); moGioTem(); break;
+      case 'tem-xoa-het': S.gioTem = []; luuTem(); moGioTem(); break;
+      case 'tem-in': inTem(); break;
+      case 'tem-them-ma': {
+        var go = ($('tem-ma').value || '').trim(), kq = S.byMa[go] ? [S.byMa[go]] : timKiem(S.items, go);
+        if (!go || !kq.length) { toast('Không tìm thấy mã ' + go); break; }
+        themTem(kq[0].ma); moGioTem(); break;
+      }
       case 'chep-ma': chep(el.getAttribute('data-ma'), function () { toast('Đã chép mã ' + el.getAttribute('data-ma')); }); break;
       case 'doi-kieu': S.kieu = S.kieu === 'luoi' ? 'dong' : 'luoi'; LS.set('kieu', S.kieu); veTrang(); break;
       case 'chep': chep(baoGia(S.byMa[el.getAttribute('data-ma')]), function () { toast('Đã chép báo giá – dán gửi khách'); }); break;
@@ -800,6 +967,12 @@
           .catch(function (err) { toast('Không làm mới được: ' + loiDeHieu(err)); });
         break;
     }
+  });
+  // Ô nhập trong giỏ tem: lưu ngay, vẽ lại phần xem trước khi rời ô.
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.hasAttribute && t.hasAttribute('data-tem-gia')) { var it = S.gioTem[Number(t.getAttribute('data-tem-gia'))]; if (it) { it.gia = String(t.value).replace(/[^\d]/g, ''); luuTem(); moGioTem(); } }
+    else if (t.hasAttribute && t.hasAttribute('data-tem-cfg')) { S.temCfg[t.getAttribute('data-tem-cfg')] = t.value.trim(); luuTem(); moGioTem(); }
   });
   document.addEventListener('input', function (e) {
     if (e.target.id === 'tk-home') { S.qHome = e.target.value; veKetQua(); }
