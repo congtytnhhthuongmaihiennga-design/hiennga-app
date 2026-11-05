@@ -139,6 +139,8 @@
   }
   function khoaDem() { return (DEMO ? 'demo_' : '') + 'gia_' + (S.sess ? S.sess.role : 'khach'); }
   function nhanGia(res) {
+    S.th = {};
+    Object.keys(res.thuongHieu || {}).forEach(function (h) { S.th[norm(h)] = res.thuongHieu[h]; });
     S.items = (res.data || []).map(function (p) {
       p._nhom = nhomCua(p.nhom);
       p._ten = tenGon(p.ten) || p.ma;
@@ -146,7 +148,7 @@
       p._cap = (goc.match(/lo[aạ]i\s*(\d)/i) || [])[1] || ''; // cấp gạch: Loại 1 / 2 / 3
       // Số viên/thùng bỏ khỏi tên nhưng vẫn hiện ở dòng nhỏ – có mã chỉ khác nhau ở điểm này.
       p._vt = (goc.match(/\(\s*(\d+)\s*v\s*\/\s*th/i) || [])[1] || '';
-      p._tk = norm([p.ma, p.ten, p.tenGoc, p.hang, p.kc, p.loai, p.mau, p.nhom].join(' '));
+      p._tk = norm([p.ma, p.ten, p.tenGoc, p.hang, p.hang ? tenHang(p.hang) : '', p.kc, p.loai, p.mau, p.nhom].join(' '));
       return p;
     });
     S.byMa = {};
@@ -161,7 +163,7 @@
     api('getAll').then(function (res) {
       if (!res || res.status !== 'ok') throw new Error((res && res.msg) || 'máy chủ báo lỗi');
       if (S.sess && res.daDangNhap === false) { hetPhien(); return; }
-      LS.set(khoaDem(), { data: res.data, anh: res.anh, luc: res.luc, capNhat: res.capNhat });
+      LS.set(khoaDem(), { data: res.data, anh: res.anh, thuongHieu: res.thuongHieu, luc: res.luc, capNhat: res.capNhat });
       nhanGia(res);
     }).catch(function (e) {
       S.loi = 'Không tải được bảng giá: ' + loiDeHieu(e) + (S.items.length ? ' (đang hiện bản lưu trên máy)' : '');
@@ -238,7 +240,7 @@
     var a = anhCua(p.ma)[idx || 0];
     return '<div class="anh-o ' + (cls || '') + '">' +
       (a ? '<img class="anh" loading="lazy" alt="" src="' + esc(coAnh(a, 320)) + '" data-icon="' + iconNhom(p) + '">' : ic(iconNhom(p))) +
-      (kemHang && p.hang ? '<span class="tag-hang">' + esc(p.hang) + '</span>' : '') + '</div>';
+      (kemHang && p.hang ? '<span class="tag-hang">' + esc(tenHang(p.hang)) + '</span>' : '') + '</div>';
   }
   // Ảnh lỗi (Drive chưa chia sẻ công khai, link sai) -> hiện biểu tượng thay vì khung trắng.
   document.addEventListener('error', function (e) {
@@ -280,12 +282,15 @@
 
   // ---------- Dòng / thẻ sản phẩm ----------
   // Tên vật tư là tiêu đề lớn; mã SP + hãng nhỏ ở dưới.
+  // Logo / tên đầy đủ: tab "Thương hiệu" trên Sheet (S.th) ưu tiên hơn danh sách có sẵn trong config.js.
   var LOGO_HANG = {};
   Object.keys(CFG.LOGO_HANG || {}).forEach(function (h) { LOGO_HANG[norm(h)] = CFG.LOGO_HANG[h]; });
-  function logoHang(h) { return LOGO_HANG[norm(h)] || ''; }
+  function thongTinHang(h) { return (S.th && S.th[norm(h)]) || {}; }
+  function tenHang(h) { return thongTinHang(h).ten || h; }
+  function logoHang(h) { return thongTinHang(h).logo || LOGO_HANG[norm(h)] || LOGO_HANG[norm(tenHang(h))] || ''; }
   function nhanCap(p) { return p._cap ? '<span class="cap cap-' + p._cap + '">Loại ' + p._cap + '</span>' : ''; }
   function dongPhu(p) {
-    return '<div class="row-sub"><span class="ma">' + esc(p.ma) + '</span>' + (p.hang ? ' · ' + esc(p.hang) : '') + (p._vt ? ' · ' + p._vt + ' viên/thùng' : '') + '</div>';
+    return '<div class="row-sub"><span class="ma">' + esc(p.ma) + '</span>' + (p.hang ? ' · ' + esc(tenHang(p.hang)) : '') + (p._vt ? ' · ' + p._vt + ' viên/thùng' : '') + '</div>';
   }
   function dong(p) {
     return '<button type="button" class="row" data-sp="' + esc(p.ma) + '">' + oAnh(p) +
@@ -378,7 +383,7 @@
     } else {
       var g = S.nhom === 'ganday' ? { ten: 'Xem gần đây' } : nhomTheoKey(S.nhom);
       html = '<div class="tb-row"><button type="button" class="tb-icon" data-act="home" aria-label="Về trang chủ">' + ic('back') + '</button>' +
-        '<div class="tb-title">' + esc(S.hang && S.nhom === 'all' ? S.hang : g.ten) + '</div><span class="sync" id="sync"></span>' +
+        '<div class="tb-title">' + esc(S.hang && S.nhom === 'all' ? tenHang(S.hang) : g.ten) + '</div><span class="sync" id="sync"></span>' +
         (S.nhom !== 'ganday' ? '<button type="button" class="tb-icon" data-act="doi-kieu" aria-label="Đổi kiểu xem">' + ic(S.kieu === 'luoi' ? 'list' : 'grid') + '</button>' : '') +
         nutTaiKhoan(true) + '</div>' +
         (S.nhom !== 'ganday' ? '<label class="tb-search">' + ic('search', 'ic-sm') + '<input id="tk-list" type="search" placeholder="Tìm trong ' + esc(g.ten.toLowerCase()) + '…" value="' + esc(S.q) + '"></label>' : '');
@@ -414,10 +419,10 @@
     var coLogo = dsHang.filter(logoHang), chuaLogo = dsHang.filter(function (h) { return !logoHang(h); });
     if (dsHang.length) html += '<div class="h2">Thương hiệu</div>' +
       (coLogo.length ? '<div class="hang-grid">' + coLogo.map(function (h) {
-        return '<button type="button" class="hang-o" data-hang-home="' + esc(h) + '"><img src="' + esc(logoHang(h)) + '" alt="' + esc(h) + '" loading="lazy"><small>' + esc(h) + ' · ' + hang[h] + ' mã</small></button>';
+        return '<button type="button" class="hang-o" data-hang-home="' + esc(h) + '"><img src="' + esc(logoHang(h)) + '" alt="' + esc(tenHang(h)) + '" loading="lazy"><small>' + esc(tenHang(h)) + ' · ' + hang[h] + ' mã</small></button>';
       }).join('') + '</div>' : '') +
       (chuaLogo.length ? '<div class="chips wrap"' + (coLogo.length ? ' style="margin-top:10px"' : '') + '>' + chuaLogo.map(function (h) {
-        return '<button type="button" class="chip" data-hang-home="' + esc(h) + '">' + esc(h) + ' <small>' + hang[h] + '</small></button>';
+        return '<button type="button" class="chip" data-hang-home="' + esc(h) + '">' + esc(tenHang(h)) + ' <small>' + hang[h] + '</small></button>';
       }).join('') + '</div>' : '');
 
     var gd = ganDay();
@@ -459,7 +464,7 @@
       dsHang.map(function (h) {
         var l = logoHang(h);
         return '<button type="button" class="chip' + (l ? ' chip-logo' : '') + (S.hang === h ? ' on' : '') + '" data-hang="' + esc(h) + '">' +
-          (l ? '<img src="' + esc(l) + '" alt="' + esc(h) + '">' : esc(h)) + ' <small>' + hang[h] + '</small></button>';
+          (l ? '<img src="' + esc(l) + '" alt="' + esc(h) + '">' : esc(tenHang(h))) + ' <small>' + hang[h] + '</small></button>';
       }).join('');
     $('main').innerHTML = '<div class="loc-bar"><div class="chips">' + chips + '</div></div>' + goiYDangNhap() + '<div id="list-kq">' + htmlKetQuaDS() + '</div>';
   }
@@ -524,7 +529,7 @@
       (anh.length > 1 ? '<button type="button" class="anh-nav trai" data-anh="-1" aria-label="Ảnh trước">' + ic('chevL') + '</button><button type="button" class="anh-nav phai" data-anh="1" aria-label="Ảnh sau">' + ic('chevR') + '</button><span class="anh-so">' + (S.anhIdx + 1) + '/' + anh.length + '</span>' : '') + '</div>';
     html += '<h2 class="ct-ten">' + esc(p._ten) + '</h2>' +
       '<button type="button" class="ct-ma" data-act="chep-ma" data-ma="' + esc(p.ma) + '" title="Chép mã">Mã SP: <b>' + esc(p.ma) + '</b>' + ic('copy', 'ic-sm') + '</button>' +
-      '<div class="ct-tags">' + (p.hang ? (logoHang(p.hang) ? '<span class="tag hang-logo"><img src="' + esc(logoHang(p.hang)) + '" alt="' + esc(p.hang) + '"></span>' : '<span class="tag hang">' + esc(p.hang) + '</span>') : '') + nhanCap(p) + '<span class="tag">' + esc(g.ten) + '</span>' +
+      '<div class="ct-tags">' + (p.hang ? (logoHang(p.hang) ? '<span class="tag hang-logo"><img src="' + esc(logoHang(p.hang)) + '" alt="' + esc(p.hang) + '"></span>' : '<span class="tag hang">' + esc(tenHang(p.hang)) + '</span>') : '') + nhanCap(p) + '<span class="tag">' + esc(g.ten) + '</span>' +
       [p.kc, p.loai].filter(String).map(function (t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('') + '</div>';
 
     // Giá

@@ -121,7 +121,10 @@ function layTabAnh() {
     var s = ds[j], n = Math.min(s.getLastRow(), 10), m = Math.min(s.getLastColumn(), 20);
     if (n > 0 && m > 0 && timDongTieuDe(s.getRange(1, 1, n, m).getValues(), COT_GIA.ma) >= 0) return s;
   }
-  return null;
+  // Sheet ảnh mới tinh: dùng tab trống đầu tiên (đổi tên thành "Ảnh"), máy chủ sẽ điền Mã + Tên từ Giá.
+  var trong = ds.filter(function (s) { return s.getLastRow() === 0; })[0];
+  if (trong) return trong.setName(TAB.anh);
+  return ss.insertSheet(TAB.anh, 0);
 }
 
 // ---------- Sheet tồn kho riêng ----------

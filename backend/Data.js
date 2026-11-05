@@ -29,22 +29,58 @@ function docGia() {
   return { status: 'ok', count: data.length, coGiaDL: c.dl !== undefined, data: data, luc: new Date().toISOString() };
 }
 
-function docAnh() {
+// Sheet ảnh: Mã sản phẩm | Tên sản phẩm | Link Drive hình ảnh | Link ảnh 2 | Link ảnh 3 | Ghi chú.
+// Máy chủ tự điền Mã + Tên từ bảng Giá (thêm dòng cho mã mới); người lo ảnh chỉ dán link Drive.
+var TIEU_DE_ANH = ['Mã sản phẩm', 'Tên sản phẩm', 'Link Drive hình ảnh', 'Link ảnh 2', 'Link ảnh 3', 'Ghi chú'];
+function laCotAnh(h) { var k = norm(h); return k.indexOf('link') >= 0 || k.indexOf('hinhanh') >= 0 || /^anh\d*$/.test(k); }
+
+function docAnh(giaData) {
   var sh = layTabAnh();
+  if (sh && giaData) { try { dongBoMaAnh(sh, giaData); } catch (e) { } }
   if (!sh) return { status: 'ok', data: {} };
   var rows = sh.getDataRange().getValues();
   var hi = timDongTieuDe(rows, COT_GIA.ma);
   if (hi < 0) return { status: 'ok', data: {} };
   var iMa = timCot(rows[hi], { ma: COT_GIA.ma }).ma, cotAnh = [];
-  rows[hi].forEach(function (h, i) { if (i !== iMa && norm(h).indexOf('anh') === 0) cotAnh.push(i); });
+  rows[hi].forEach(function (h, i) { if (i !== iMa && laCotAnh(h)) cotAnh.push(i); });
   var data = {};
   for (var r = hi + 1; r < rows.length; r++) {
     var ma = chu(rows[r][iMa]);
     if (!ma) continue;
-    var ds = cotAnh.map(function (i) { return linkAnh(rows[r][i]); }).filter(String);
+    // Một ô có thể dán nhiều link (xuống dòng / dấu phẩy).
+    var ds = [];
+    cotAnh.forEach(function (i) { String(rows[r][i] || '').split(/[\s,;]+/).forEach(function (u) { var l = linkAnh(u); if (l) ds.push(l); }); });
     if (ds.length) data[ma] = ds;
   }
   return { status: 'ok', data: data };
+}
+
+// Tab ảnh trống thì tạo tiêu đề; mã có trong Giá mà chưa có dòng thì thêm (Mã + Tên). Không xóa / sửa link đã dán.
+function dongBoMaAnh(sh, giaData) {
+  var rows = sh.getLastRow() ? sh.getDataRange().getValues() : [];
+  var hi = rows.length ? timDongTieuDe(rows, COT_GIA.ma) : -1;
+  if (hi < 0) {
+    if (sh.getLastRow() > 0) return; // tab có dữ liệu lạ – không đụng vào
+    sh.getRange(1, 1, 1, TIEU_DE_ANH.length).setValues([TIEU_DE_ANH]).setFontWeight('bold').setBackground('#E3F2FD');
+    sh.setFrozenRows(1);
+    sh.setColumnWidth(1, 160); sh.setColumnWidth(2, 380); sh.setColumnWidth(3, 360);
+    sh.getRange(1, 3).setNote('Dán link ảnh trên Google Drive (Chia sẻ → "Bất kỳ ai có đường liên kết – Người xem"). Nhiều ảnh: dán thêm vào cột Link ảnh 2, 3 hoặc nhiều link trong 1 ô, mỗi link 1 dòng.');
+    rows = [TIEU_DE_ANH]; hi = 0;
+  }
+  var c = timCot(rows[hi], { ma: COT_GIA.ma, ten: COT_GIA.ten.concat(['Tên sản phẩm']) });
+  var co = {};
+  for (var i = hi + 1; i < rows.length; i++) { var m = chu(rows[i][c.ma]); if (m) co[m.toUpperCase()] = 1; }
+  var rong = rows[hi].length, moi = [];
+  giaData.forEach(function (p) {
+    if (co[p.ma.toUpperCase()]) return;
+    var r = []; for (var j = 0; j < rong; j++) r.push('');
+    r[c.ma] = p.ma; if (c.ten !== undefined) r[c.ten] = p.tenGoc || p.ten;
+    moi.push(r);
+  });
+  if (moi.length) {
+    sh.getRange(sh.getLastRow() + 1, 1, moi.length, rong).setValues(moi);
+    if (c.ma !== undefined) sh.getRange(hi + 2, c.ma + 1, sh.getLastRow() - hi - 1, 1).setNumberFormat('@');
+  }
 }
 
 // Nhóm giao theo kho (tab "Kho"): nhanh = có hàng ngay, mai = mai có hàng, cho = chờ đặt.
@@ -139,6 +175,48 @@ function baoDaNhan(sh, soMaCon, soDong) {
   } catch (e) { }
 }
 
+// ---------- Thương hiệu: tên đầy đủ + logo (tab "Thương hiệu" của Sheet chính) ----------
+// Chưa có tab thì tự tạo, điền sẵn mọi hãng đang có trong bảng giá (+ tên đầy đủ đã ghi ở tab "Hãng viết tắt").
+function docThuongHieu(giaData) {
+  var sh = layTab(TAB.thuongHieu, false);
+  if (!sh) sh = taoTabThuongHieu(giaData);
+  if (!sh) return { status: 'ok', data: {} };
+  var rows = sh.getDataRange().getValues();
+  var hi = timDongTieuDe(rows, COT_TH.hang);
+  if (hi < 0) return { status: 'ok', data: {} };
+  var c = timCot(rows[hi], COT_TH), data = {};
+  for (var i = hi + 1; i < rows.length; i++) {
+    var h = chu(rows[i][c.hang]);
+    if (!h) continue;
+    var ten = c.ten === undefined ? '' : chu(rows[i][c.ten]);
+    var logo = c.logo === undefined ? '' : chu(rows[i][c.logo]);
+    // Link Drive -> link ảnh hiển thị được; đường dẫn trong app (img/…) giữ nguyên.
+    if (/^https?:\/\//i.test(logo)) logo = linkAnh(logo);
+    if (ten || logo) data[h] = { ten: ten, logo: logo };
+  }
+  return { status: 'ok', data: data };
+}
+function taoTabThuongHieu(giaData) {
+  if (!giaData || !giaData.length) return null;
+  var dem = {};
+  giaData.forEach(function (p) { if (p.hang) dem[p.hang] = (dem[p.hang] || 0) + 1; });
+  var tenDu = {}, vt = layTab('Hãng viết tắt', false);
+  if (vt) vt.getDataRange().getValues().slice(1).forEach(function (r) { if (chu(r[0]) && chu(r[2])) tenDu[chu(r[0])] = chu(r[2]); });
+  var ds = Object.keys(dem).sort(function (a, b) { return dem[b] - dem[a]; });
+  var rows = [['Hãng (như bảng giá)', 'Tên đầy đủ', 'Logo', 'Số mã', 'Ghi chú']].concat(ds.map(function (h) {
+    var vietTat = /^[A-Z0-9]{2,5}$/.test(h) && h !== 'CMC';
+    return [h, tenDu[h] || '', '', dem[h], vietTat && !tenDu[h] ? 'Chữ viết tắt – điền tên hãng đầy đủ' : ''];
+  }));
+  var ss = SpreadsheetApp.getActiveSpreadsheet(), sh = ss.insertSheet(TAB.thuongHieu);
+  sh.getRange(1, 1, rows.length, 5).setValues(rows);
+  sh.getRange(1, 1, 1, 5).setFontWeight('bold').setBackground('#E3F2FD');
+  sh.setFrozenRows(1);
+  sh.setColumnWidth(1, 170); sh.setColumnWidth(2, 220); sh.setColumnWidth(3, 320); sh.setColumnWidth(5, 300);
+  sh.getRange(1, 3).setNote('Để trống = dùng logo có sẵn trong app (nếu có). Muốn đổi: dán link ảnh logo (Google Drive chia sẻ "Bất kỳ ai có liên kết", hoặc link ảnh trên web).');
+  sh.getRange(1, 2).setNote('Tên hiện trên app thay cho chữ ở cột A (vd HT → tên hãng đầy đủ). Để trống = giữ như cột A.');
+  return sh;
+}
+
 // ---------- Trả cho app (đã lọc theo quyền) ----------
 function getAll(ti) {
   var gia = quaDem('gia', docGia, TAB.gia);
@@ -148,12 +226,14 @@ function getAll(ti) {
   var anh = {};
   try {
     // Ghép ảnh theo mã không phân biệt hoa/thường (tên file ảnh hay gõ chữ thường).
-    var goc = quaDem('anh', docAnh, layTabAnh, CACHE_GIAY_TON).data || {}, theoHoa = {};
+    var goc = quaDem('anh', function () { return docAnh(gia.data); }, layTabAnh, CACHE_GIAY_TON).data || {}, theoHoa = {};
     Object.keys(goc).forEach(function (m) { theoHoa[m.toUpperCase()] = goc[m]; });
     gia.data.forEach(function (p) { var a = theoHoa[p.ma.toUpperCase()]; if (a) anh[p.ma] = a; });
   } catch (e) { } // lỗi ảnh không được làm hỏng bảng giá
+  var th = {};
+  try { th = quaDem('th', function () { return docThuongHieu(gia.data); }, TAB.thuongHieu).data || {}; } catch (e) { }
   var capNhat = PropertiesService.getScriptProperties().getProperty('CAP_NHAT_GIA') || '';
-  return { status: 'ok', data: gia.data, anh: anh, luc: gia.luc, capNhat: capNhat, daDangNhap: !!ti };
+  return { status: 'ok', data: gia.data, anh: anh, thuongHieu: th, luc: gia.luc, capNhat: capNhat, daDangNhap: !!ti };
 }
 
 function getTonKho(ti) {

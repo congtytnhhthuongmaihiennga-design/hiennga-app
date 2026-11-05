@@ -14,7 +14,13 @@ var TAB = {
   kho:    'Kho',
   noima:  'Nối mã',
   anh:    'Ảnh',
-  users:  'Users'
+  users:  'Users',
+  thuongHieu: 'Thương hiệu'   // Hãng | Tên đầy đủ | Logo – quản lý tự sửa, app đọc theo
+};
+var COT_TH = {
+  hang: ['Hãng (như bảng giá)', 'Hãng', 'Viết tắt'],
+  ten:  ['Tên đầy đủ', 'Tên hãng'],
+  logo: ['Logo', 'Link logo']
 };
 
 // Khách hàng (đại lý) chỉ thấy tối đa số này; app hiện "50+".

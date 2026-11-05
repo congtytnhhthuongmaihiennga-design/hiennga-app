@@ -38,8 +38,14 @@ window.APP_CONFIG = {
     'TOTO': 'img/hang/toto.png',
     'American Standard': 'img/hang/american-standard.webp',
     'Viglacera': 'img/hang/viglacera.png',
-    'Yale': 'img/hang/yale.png'
+    'Yale': 'img/hang/yale.png',
+    'CMC': 'img/hang/cmc.png',
+    'Caesar': 'img/hang/caesar.png',
+    'Cotto': 'img/hang/cotto.png',
+    'Malloca': 'img/hang/malloca.png',
+    'Esslinger': 'img/hang/esslinger.png'
   },
+  // Logo / tên đầy đủ trong tab "Thương hiệu" của Google Sheet được ưu tiên hơn danh sách trên.
 
   NGUONG_TON_KHACH: 50,     // đại lý thấy "50+" khi tồn > 50 (máy chủ đã chặn trần 51)
 
