@@ -184,9 +184,18 @@
   }
 
   // ---------- Giá / tồn kho hiển thị ----------
-  function soTon(n, dvt) {
+  // d: thông tin tồn của mã (dvt, vt = viên/thùng, m2 = m²/thùng). Gạch: 102.8 thùng loại 5 viên = "102 thùng 4 viên".
+  function soTon(n, d, kemM2) {
+    var dvt = d.dvt || '';
     if (laKhach() && n > NGUONG) return NGUONG + '+' + (dvt ? ' ' + dvt : '');
-    return so(n) + (dvt ? ' ' + dvt : '');
+    var s;
+    if (d.vt) {
+      var th = Math.floor(n + 1e-9), le = Math.round((n - th) * d.vt);
+      if (le >= d.vt) { th++; le = 0; }
+      s = [th ? th + ' thùng' : '', le ? le + ' viên' : ''].filter(String).join(' ') || '0 thùng';
+    } else s = so(n) + (dvt ? ' ' + dvt : '');
+    if (kemM2 && d.m2 && !(laKhach() && n > NGUONG)) s += ' ≈ ' + so(Math.round(n * d.m2 * 10) / 10) + ' m²';
+    return s;
   }
   function tierChinh(d) { return d.tier.nhanh > 0 ? 'nhanh' : (d.tier.mai > 0 ? 'mai' : 'cho'); }
   function nhanTon(p) {
@@ -194,7 +203,7 @@
     var d = S.ton[p.ma];
     if (!d || d.tong <= 0) return '<span class="ton">Liên hệ</span>';
     var t = tierChinh(d);
-    return '<span class="ton ' + t + '">' + (t === 'nhanh' ? soTon(d.tier.nhanh, d.dvt) : NGAN_TIER[t]) + '</span>';
+    return '<span class="ton ' + t + '">' + (t === 'nhanh' ? soTon(d.tier.nhanh, d) : NGAN_TIER[t]) + '</span>';
   }
   // Sắp xếp "tồn nhiều": ưu tiên hàng có ngay, rồi mai có, rồi chờ hàng.
   function tongTon(p) { var d = S.ton && S.ton[p.ma]; return d ? d.tier.nhanh * 1e8 + d.tier.mai * 1e4 + d.tier.cho : 0; }
@@ -541,11 +550,11 @@
     var d = S.ton[p.ma];
     if (!d || d.tong <= 0) return '<div class="mo">Hiện không có sẵn trong kho – liên hệ để đặt hàng.</div>';
     var html = '<div class="tier">' + ['nhanh', 'mai', 'cho'].filter(function (t) { return d.tier[t] > 0; }).map(function (t) {
-      return '<span class="ton ' + t + '">' + TEN_TIER[t] + ': ' + soTon(d.tier[t], d.dvt) + '</span>';
+      return '<span class="ton ' + t + '">' + TEN_TIER[t] + ': ' + soTon(d.tier[t], d, true) + '</span>';
     }).join('') + '</div>';
     // Tên kho, số lô: máy chủ chỉ gửi cho nhân viên/quản trị.
     if (laNoiBo() && d.kho) html += d.kho.map(function (k) {
-      return '<div class="kho"><div class="kho-dong"><span>' + esc(k.ten) + '</span><span>' + soTon(k.tong, d.dvt) + '</span></div>' +
+      return '<div class="kho"><div class="kho-dong"><span>' + esc(k.ten) + '</span><span>' + soTon(k.tong, d, true) + '</span></div>' +
         '<div class="lo"><span class="ton ' + k.nhom + '">' + TEN_TIER[k.nhom] + '</span>' +
         (k.lo && k.lo.length ? ' · ' + k.lo.map(function (l) { return 'Lô ' + esc(l.so) + ': ' + so(l.sl); }).join(' · ') : '') + '</div></div>';
     }).join('');
@@ -759,7 +768,7 @@
   function batDau() { apThuongHieu(); hienApp(); }
   if (DEMO) {
     var sc = document.createElement('script');
-    sc.src = 'demo-data.js?v=2'; sc.onload = batDau;
+    sc.src = 'demo-data.js?v=3'; sc.onload = batDau;
     sc.onerror = function () { document.body.innerHTML = '<p style="padding:20px">Chưa cấu hình APPS_URL trong config.js.</p>'; };
     document.head.appendChild(sc);
   } else batDau();

@@ -55,6 +55,35 @@ function nhomGiao(s) {
   return 'cho';
 }
 
+// ---------- Đơn vị tồn kho ----------
+function lam3(n) { return Math.round(n * 1000) / 1000; } // bỏ đuôi 32.049999999999997
+var TEN_DVT = { bo: 'bộ', cai: 'cái', soi: 'sợi', cay: 'cây', hop: 'hộp', vien: 'viên', lon: 'lon', thung: 'thùng', bao: 'bao', chai: 'chai', cuon: 'cuộn', tam: 'tấm', combo: 'combo' };
+function khongDau(s) {
+  return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[đĐ]/g, 'd').toLowerCase().replace(/\s+/g, '');
+}
+function tenDonVi(dvt) {
+  var d = khongDau(dvt), m = d.match(/^bao(\d+)$/);
+  if (m) return 'bao ' + m[1] + 'kg';
+  return TEN_DVT[d.replace(/\d+$/, '')] || chu(dvt);
+}
+// Gạch: phần mềm kho ghi ĐVT kiểu "vien1.44" (= thùng 1,44 m²), tồn tính theo thùng, phần lẻ là viên
+// (102.8 thùng loại 5 viên/thùng = 102 thùng 4 viên). Đôi khi số sau "vien" lại là số viên/thùng ("vien11", gạch 30x30 11v/th).
+// Trả {vt: viên/thùng (0 = không rõ), m2: m²/thùng} hoặc null nếu không phải hàng tính theo thùng.
+function quyCachThung(dvt, ten) {
+  var m = khongDau(dvt).match(/^vien(\d+(?:[.,]\d+)?)$/);
+  if (!m) return null;
+  var x = parseFloat(m[1].replace(',', '.'));
+  var kt = String(ten || '').match(/(\d{2,3})\s*[x×]\s*(\d{2,3})/i);
+  var dt = kt ? Number(kt[1]) * Number(kt[2]) / 1e4 : 0;  // m² một viên (kích cỡ theo cm)
+  var v = Number((String(ten || '').match(/\((\d+)\s*v\s*\/\s*th/i) || [])[1] || 0);
+  var gan = function (a, b) { return b > 0 && Math.abs(a - b) / b < 0.06; };
+  if (v && dt && gan(v * dt, x)) return { vt: v, m2: x };
+  if (v && x === v) return { vt: v, m2: dt ? Math.round(v * dt * 1000) / 1000 : 0 };
+  if (!v && dt && x < 5 && gan(Math.round(x / dt) * dt, x)) return { vt: Math.round(x / dt), m2: x };
+  if (!v && dt && x >= 3 && x === Math.round(x)) return { vt: x, m2: Math.round(x * dt * 1000) / 1000 };
+  return { vt: v, m2: x < 5 ? x : 0 };
+}
+
 function docTonKho() {
   var sh = layTab(TAB.tonkho, true);
   var rows = sh.getDataRange().getValues();
@@ -79,10 +108,16 @@ function docTonKho() {
     var ma = noi[maGoc] || maGoc;
     var tenKho = c.kho === undefined ? 'Kho' : (chu(r[c.kho]) || 'Kho');
     var nhom = kho[norm(tenKho)] || 'nhanh';
-    var d = data[ma] || (data[ma] = { tong: 0, dvt: c.dvt === undefined ? '' : chu(r[c.dvt]), tier: { nhanh: 0, mai: 0, cho: 0 }, kho: {} });
-    d.tong += sl; d.tier[nhom] += sl;
+    var d = data[ma];
+    if (!d) {
+      var dvtGoc = c.dvt === undefined ? '' : chu(r[c.dvt]);
+      var qc = quyCachThung(dvtGoc, c.ten === undefined ? '' : r[c.ten]);
+      d = data[ma] = { tong: 0, dvt: qc ? 'thùng' : tenDonVi(dvtGoc), tier: { nhanh: 0, mai: 0, cho: 0 }, kho: {} };
+      if (qc) { d.vt = qc.vt; d.m2 = qc.m2; }
+    }
+    d.tong = lam3(d.tong + sl); d.tier[nhom] = lam3(d.tier[nhom] + sl);
     var k = d.kho[tenKho] || (d.kho[tenKho] = { ten: tenKho, nhom: nhom, tong: 0, lo: [] });
-    k.tong += sl;
+    k.tong = lam3(k.tong + sl);
     var so = c.lo === undefined ? '' : chu(r[c.lo]);
     if (so) k.lo.push({ so: so, sl: sl });
   }
@@ -111,7 +146,7 @@ function getTonKho(ti) {
   var cap = function (n) { return Math.min(Number(n) || 0, TRAN_TON_KHACH); };
   Object.keys(res.data).forEach(function (ma) {
     var d = res.data[ma];
-    res.data[ma] = { tong: cap(d.tong), dvt: d.dvt, tier: { nhanh: cap(d.tier.nhanh), mai: cap(d.tier.mai), cho: cap(d.tier.cho) } };
+    res.data[ma] = { tong: cap(d.tong), dvt: d.dvt, vt: d.vt, m2: d.m2, tier: { nhanh: cap(d.tier.nhanh), mai: cap(d.tier.mai), cho: cap(d.tier.cho) } };
   });
   return res;
 }

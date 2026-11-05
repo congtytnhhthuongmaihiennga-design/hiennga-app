@@ -48,6 +48,7 @@ var COT_GIA = {
 };
 var COT_TON = {
   ma:  ['Mã hàng', 'Mã SP', 'Mã', 'Mã vật tư', 'Material Number'],
+  ten: ['Tên vật tư', 'Tên hàng', 'Tên'],   // để đọc số viên/thùng "(5v/th)" và kích cỡ gạch
   kho: ['Kho', 'Tên kho', 'Kho hàng', 'Name 1'],
   sl:  ['Số lượng', 'Khả dụng', 'SL', 'Tồn', 'Tồn kho', 'Số lượng tồn'],
   lo:  ['Số lô', 'Lô', 'Batch'],

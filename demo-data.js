@@ -34,9 +34,12 @@
   data.forEach(function (p) {
     if (rnd(5) === 0) return; // ~20% hết hàng
     var d = { tong: 0, dvt: p.dvt === 'm²' ? 'thùng' : p.dvt, tier: { nhanh: 0, mai: 0, cho: 0 }, kho: [] };
+    // Gạch: tồn theo thùng, phần lẻ là viên (giống file thẻ kho thật).
+    var qc = String(p.dg).match(/(\d+) viên\/thùng · ([\d.]+) m²/);
+    if (p.dvt === 'm²' && qc) { d.vt = Number(qc[1]); d.m2 = Number(qc[2]); }
     KHO.forEach(function (k) {
       if (rnd(2)) return;
-      var sl = 5 + rnd(120), lo = [{ so: 'L' + (2400 + rnd(99)), sl: Math.ceil(sl / 2) }, { so: 'L' + (2500 + rnd(99)), sl: Math.floor(sl / 2) }];
+      var sl = 5 + rnd(120) + (d.vt ? rnd(d.vt) / d.vt : 0), lo = [{ so: 'L' + (2400 + rnd(99)), sl: Math.ceil(sl / 2) }, { so: 'L' + (2500 + rnd(99)), sl: Math.floor(sl / 2) }];
       d.kho.push({ ten: k[0], nhom: k[1], tong: sl, lo: lo }); d.tong += sl; d.tier[k[1]] += sl;
     });
     if (d.tong) ton[p.ma] = d;
