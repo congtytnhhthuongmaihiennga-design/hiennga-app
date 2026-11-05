@@ -35,7 +35,8 @@ var COT_GIA = {
   hang:     ['Hãng', 'Thương hiệu', 'Nhãn hiệu', 'Brand'],
   nhom:     ['Nhóm hàng', 'Nhóm', 'Ngành hàng', 'Loại hàng'],
   ma:       ['Mã hàng', 'Mã SP', 'Mã sản phẩm', 'Mã', 'Mã vật tư', 'Code'],
-  ten:      ['Tên hàng', 'Tên sản phẩm', 'Tên SP', 'Tên', 'Diễn giải'],
+  ten:      ['Tên hàng', 'Tên sản phẩm', 'Tên SP', 'Tên vật tư', 'Tên', 'Diễn giải'],
+  tenHien:  ['Tên hiển thị', 'Tên bán hàng'],   // không bắt buộc: có thì app dùng thay cho tên vật tư
   kc:       ['Kích cỡ / Quy cách', 'Kích cỡ', 'Kích thước', 'Quy cách', 'Size'],
   loai:     ['Loại', 'Dòng', 'Chất liệu'],
   dvt:      ['Đơn vị', 'ĐVT', 'Đơn vị tính'],

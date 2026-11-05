@@ -19,7 +19,7 @@ function docGia() {
     if (c.hien !== undefined && an.indexOf(norm(r[c.hien])) >= 0) continue;
     daCo[ma] = 1;
     data.push({
-      ma: ma, hang: o(r, 'hang'), nhom: o(r, 'nhom'), ten: o(r, 'ten'), kc: o(r, 'kc'),
+      ma: ma, hang: o(r, 'hang'), nhom: o(r, 'nhom'), ten: o(r, 'tenHien') || o(r, 'ten'), tenGoc: o(r, 'ten'), kc: o(r, 'kc'),
       loai: o(r, 'loai'), dvt: o(r, 'dvt'), dg: o(r, 'dg'),
       ny: soTien(r[c.ny]), dl: c.dl === undefined ? 0 : soTien(r[c.dl]), gc: o(r, 'gc'),
       mau: o(r, 'mau'), congNang: o(r, 'congNang'), tinhNang: o(r, 'tinhNang'),

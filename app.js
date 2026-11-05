@@ -142,10 +142,11 @@
     S.items = (res.data || []).map(function (p) {
       p._nhom = nhomCua(p.nhom);
       p._ten = tenGon(p.ten) || p.ma;
-      p._cap = (String(p.ten).match(/lo[aạ]i\s*(\d)/i) || [])[1] || ''; // cấp gạch: Loại 1 / 2 / 3
+      var goc = String(p.tenGoc || p.ten || ''); // tên vật tư gốc (khi Sheet có cột "Tên hiển thị")
+      p._cap = (goc.match(/lo[aạ]i\s*(\d)/i) || [])[1] || ''; // cấp gạch: Loại 1 / 2 / 3
       // Số viên/thùng bỏ khỏi tên nhưng vẫn hiện ở dòng nhỏ – có mã chỉ khác nhau ở điểm này.
-      p._vt = (String(p.ten).match(/\(\s*(\d+)\s*v\s*\/\s*th/i) || [])[1] || '';
-      p._tk = norm([p.ma, p.ten, p.hang, p.kc, p.loai, p.mau, p.nhom].join(' '));
+      p._vt = (goc.match(/\(\s*(\d+)\s*v\s*\/\s*th/i) || [])[1] || '';
+      p._tk = norm([p.ma, p.ten, p.tenGoc, p.hang, p.kc, p.loai, p.mau, p.nhom].join(' '));
       return p;
     });
     S.byMa = {};
@@ -805,8 +806,21 @@
       : (sdt() ? 'Chưa có tài khoản / quên mật khẩu? <a href="https://zalo.me/' + sdt() + '" target="_blank" rel="noopener">Liên hệ ' + esc(CFG.LIEN_HE_TEN || '') + ' · ' + sdtDep() + '</a>' : '');
   }
 
+  // Điện thoại hay giữ index.html cũ (GitHub Pages đệm 10 phút, app "thêm vào màn hình chính" còn lâu hơn):
+  // đọc index.html mới nhất, thấy số phiên bản app.js khác bản đang chạy thì tải lại một lần.
+  function kiemTraBanMoi() {
+    var dangChay = ((document.querySelector('script[src*="app.js"]') || {}).src || '').match(/v=(\d+)/);
+    if (!dangChay || !window.fetch) return;
+    fetch('index.html?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (html) {
+      var moi = html.match(/app\.js\?v=(\d+)/);
+      if (!moi || moi[1] === dangChay[1]) return;
+      try { if (sessionStorage.getItem('hn_da_tai_lai') === moi[1]) return; sessionStorage.setItem('hn_da_tai_lai', moi[1]); } catch (e) { }
+      location.reload();
+    }).catch(function () { });
+  }
   // Mở app là vào thẳng bảng giá; đăng nhập chỉ khi cần giá đại lý / tồn kho.
-  function batDau() { apThuongHieu(); hienApp(); }
+  function batDau() { apThuongHieu(); hienApp(); if (!DEMO) kiemTraBanMoi(); }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && !DEMO) kiemTraBanMoi(); });
   if (DEMO) {
     var sc = document.createElement('script');
     sc.src = 'demo-data.js?v=3'; sc.onload = batDau;
