@@ -870,7 +870,7 @@
       if (chua) html += '<div class="chua-box"><div class="mo">Giữ hàng trong:</div><div class="chips">' + S.chuaCfg.map(function (c) {
           return '<button type="button" class="chip' + (c.ngay === nNgay ? ' on' : '') + '" data-don-ngay="' + c.ngay + '">' + c.ngay + ' ngày' + (c.coc ? ' <small>cọc ' + c.coc + '%</small>' : '') + '</button>'; }).join('') + '</div>' +
         '<p class="chua-coc">' + (coc.tien ? 'Cần đặt cọc ' + coc.pc + '% ≈ <b>' + tien(coc.tien) + '</b>' : 'Không cần đặt cọc') + '</p>' +
-        '<p class="mo">Hàng được giữ sau khi Hiển Nga duyệt. Gần hết hạn có thể xin gia hạn trong "Đơn của tôi".</p></div>';
+        '<p class="mo">Gửi xong là số hàng được giữ ngay (khách khác không đặt trùng). Hiển Nga duyệt rồi mới tính ngày giữ; từ chối / hủy thì hàng trả lại. Gần hết hạn có thể xin gia hạn trong "Đơn của tôi".</p></div>';
       html += '<div class="sec">Giao hàng</div><div class="chips">' +
         [['giao', 'Giao tận nơi'], ['nhan', 'Nhận tại kho']].map(function (h) { return '<button type="button" class="chip' + ((f.hinhThuc || 'giao') === h[0] ? ' on' : '') + '" data-don-ht="' + h[0] + '">' + h[1] + '</button>'; }).join('') + '</div>' +
         '<div class="form" style="margin-top:10px"><label>Tên cửa hàng / người nhận<input data-don="tenKH" value="' + esc(f.tenKH != null ? f.tenKH : (s.tenCty || s.name || '')) + '"></label>' +
@@ -1213,7 +1213,7 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden && !DEMO) kiemTraBanMoi(); });
   if (DEMO) {
     var sc = document.createElement('script');
-    sc.src = 'demo-data.js?v=5'; sc.onload = batDau;
+    sc.src = 'demo-data.js?v=6'; sc.onload = batDau;
     sc.onerror = function () { document.body.innerHTML = '<p style="padding:20px">Chưa cấu hình APPS_URL trong config.js.</p>'; };
     document.head.appendChild(sc);
   } else batDau();

@@ -40,15 +40,20 @@ function xuLy(p) {
       case 'login':     return login(p);
       case 'logout':    xoaToken(p.t); return { status: 'ok' };
       case 'listUsers': return laAdmin ? listUsers() : cam;
-      case 'luuUser':   return laAdmin ? luuUser(p) : cam;
+      case 'luuUser':   return laAdmin ? luuUser(p, ti) : cam;
       case 'clearCache': if (!laAdmin) return cam; xoaDem(); return { status: 'ok' };
       // Đơn hàng (GĐ1)
       case 'taoDon':     return ti ? taoDon(p, ti) : { status: 'error', msg: 'need_login' };
       case 'donCuaToi':  return ti ? donCuaToi(ti) : { status: 'error', msg: 'need_login' };
-      case 'dsDon':      return ti && (ti.role === 'admin' || ti.role === 'nv') ? dsDon(p) : cam;
+      case 'dsDon':      return ti && (ti.role === 'admin' || ti.role === 'nv') ? dsDon(p, ti) : cam;
       case 'capNhatDon': return ti ? capNhatDon(p, ti) : { status: 'error', msg: 'need_login' };
       // Chừa hàng (GĐ2)
       case 'xinGiaHan':  return ti ? xinGiaHan(p, ti) : { status: 'error', msg: 'need_login' };
+      // Phân quyền + nhật ký + báo cáo (GĐ3)
+      case 'dsNhanVien': return laAdmin ? dsNhanVien() : cam;
+      case 'luuQuyen':   return laAdmin ? luuQuyen(p, ti) : cam;
+      case 'nhatKy':     return ti && (ti.role === 'admin' || ti.role === 'nv') && (p.maDon || coQuyen(ti, 'nhatky')) ? nhatKy(p) : cam;
+      case 'baoCao':     return coQuyen(ti, 'baocao') ? baoCao(p) : cam;
     }
     return { status: 'error', msg: 'Unknown action: ' + a };
   } catch (err) {

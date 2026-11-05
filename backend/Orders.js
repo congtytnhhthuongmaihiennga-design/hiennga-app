@@ -15,7 +15,8 @@ var TD_DON = ['Mã đơn', 'Ngày đặt', 'Trạng thái', 'Tài khoản', 'Đ�
 var TD_CT = ['Mã đơn', 'Ngày đặt', 'Tài khoản', 'Mã hàng', 'Tên hàng', 'Số lượng', 'Đơn vị', 'Quy đổi', 'Đơn giá', 'Thành tiền'];
 var TRANG_THAI = { moi: 'Mới – chờ duyệt', giu: 'Đang chừa hàng', xacnhan: 'Đã xác nhận', danggiao: 'Đang giao', dagiao: 'Đã giao', huy: 'Đã hủy', tuchoi: 'Từ chối' };
 var LOAI_CHUA = 'Chừa hàng';
-var TT_GIU_HANG = ['giu', 'xacnhan', 'danggiao']; // các trạng thái làm giảm "Được bán"
+// Các trạng thái làm giảm "Được bán": trừ NGAY khi đại lý lên đơn / chừa hàng; hủy / từ chối thì trả lại; đã giao thì kho tự trừ.
+var TT_GIU_HANG = ['moi', 'giu', 'xacnhan', 'danggiao'];
 // Mặc định khi tab "Cài đặt chừa hàng" chưa có: [số ngày, % cọc trên tổng tiền]
 var CHUA_MAC_DINH = [[3, 0], [5, 0], [7, 10], [10, 10], [15, 20], [30, 30]];
 
@@ -133,6 +134,8 @@ function taoDon(p, ti) {
     var ct = tabDon(TAB_CT, TD_CT), rows = dong.map(function (d) { return [ma, luc, ti.user, d.ma, d.ten, d.sl, d.dv, d.qd, d.dongia, d.tien]; });
     ct.getRange(ct.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
   } finally { lock.releaseLock(); }
+  demXoa('giu');
+  ghiNhatKy(ti, chua ? 'Gửi yêu cầu chừa hàng' : 'Gửi đơn', ma, dong.length + ' mã · ' + tienVN(tong) + (chua ? ' · chừa ' + soNgay + ' ngày' : ''));
   try { baoDonMoi(don); } catch (e) { Logger.log('Báo đơn lỗi: ' + e); }
   return { status: 'ok', ma: don.ma, tong: tong, coc: don.coc, msg: (chua ? 'Đã gửi yêu cầu chừa hàng ' : 'Đã gửi đơn ') + don.ma };
 }
@@ -187,7 +190,7 @@ function donCuaToi(ti) {
 }
 
 // Quản trị / nhân viên xem tất cả.
-function dsDon(p) {
+function dsDon(p, ti) {
   var ds = docDon({ tt: p.tt || '', noiBo: true }, Number(p.gioiHan) || 500);
   var dem = { moi: 0, giu: 0, xacnhan: 0, danggiao: 0, dagiao: 0, huy: 0, tuchoi: 0, hetHan: 0, xinGH: 0 }, bay = Date.now();
   docDon({}, 5000).forEach(function (d) {
@@ -195,52 +198,71 @@ function dsDon(p) {
     if (d.tt === 'giu' && d.han && new Date(d.han).getTime() < bay) dem.hetHan++;
     if (d.tt === 'giu' && d.xinGH) dem.xinGH++;
   });
-  return { status: 'ok', data: ds.map(boDong), dem: dem, chuaCfg: docCaiChua() };
+  return { status: 'ok', data: ds.map(boDong), dem: dem, chuaCfg: docCaiChua(), quyen: ti ? quyenCua(ti.role, ti.user) : [], tenQuyen: QUYEN };
 }
 
 // Cập nhật đơn.
 //  Đại lý: chỉ tự hủy đơn của mình khi còn "Mới".
-//  Quản trị: p.tt (đổi trạng thái; 'giu' = duyệt chừa, tính hạn từ hôm nay), p.giaHan (thêm n ngày),
-//            p.boXin (từ chối xin gia hạn), p.coc / p.daCoc (tiền cọc), p.ghiChuNB.
+//  Quản trị: mọi việc. Nhân viên: theo quyền (QUYEN trong Quyen.js):
+//    don    – đổi trạng thái đơn thường (xác nhận / giao / hủy / từ chối)
+//    chua   – duyệt chừa ('giu'), gia hạn, từ chối xin gia hạn, nhả / chuyển đơn đang chừa
+//    coc    – sửa "Cọc yêu cầu" / "Đã nhận cọc"
+//    ghichu – sửa ghi chú nội bộ
+//  Trường gửi lên mà KHÔNG đổi giá trị thì bỏ qua (không cần quyền).
 function capNhatDon(p, ti) {
   var tt = String(p.tt || '');
   if (tt && !TRANG_THAI[tt]) return { status: 'error', msg: 'Trạng thái không hợp lệ.' };
-  var lock = LockService.getScriptLock(), msg = []; lock.waitLock(20000);
+  var lock = LockService.getScriptLock(), msg = [], nk = []; lock.waitLock(20000);
   try {
     var d = docDon({ noiBo: true }, 5000).filter(function (x) { return x.ma === chu(p.ma); })[0];
     if (!d) return { status: 'error', msg: 'Không thấy đơn ' + p.ma };
-    var laAdmin = ti.role === 'admin';
-    if (!laAdmin && (d.user !== ti.user || tt !== 'huy' || d.tt !== 'moi')) return { status: 'error', msg: 'forbidden' };
+    var noiBo = ti.role === 'admin' || ti.role === 'nv';
+    if (!noiBo && (d.user !== ti.user || tt !== 'huy' || d.tt !== 'moi')) return { status: 'error', msg: 'forbidden' };
+    var co = function (q) { return !noiBo || coQuyen(ti, q); }; // đại lý tự hủy đơn của mình: đã kiểm ở trên
+    var cam = function (q) { return { status: 'error', msg: 'Tài khoản chưa có quyền: ' + QUYEN[q] + '. Nhờ quản trị bật trong "Nhân viên & quyền".' }; };
+    var doiTT = tt && tt !== d.tt;
+    var n = Math.round(Number(p.giaHan) || 0);
+    var soTien = function (v) { return v === undefined || v === '' || v === null ? null : Math.max(0, Number(v) || 0); };
+    var cocMoi = soTien(p.coc), daCocMoi = soTien(p.daCoc);
+    var doiCoc = (cocMoi !== null && cocMoi !== d.coc) || (daCocMoi !== null && daCocMoi !== d.daCoc);
+    var doiNB = p.ghiChuNB !== undefined && chu(p.ghiChuNB).slice(0, 500) !== d.ghiChuNB;
+    // Kiểm quyền trước khi ghi bất cứ gì.
+    // Duyệt / từ chối / mở lại / nhả đơn chừa hàng cần quyền 'chua'; giao hàng cần quyền 'don'.
+    var qTT = tt === 'giu' || d.tt === 'giu' || (d.loai === 'chua' && ['moi', 'huy', 'tuchoi'].indexOf(d.tt) >= 0) ? 'chua' : 'don';
+    if (doiTT && !co(qTT)) return cam(qTT);
+    if ((n > 0 || p.boXin) && !co('chua')) return cam('chua');
+    if (doiCoc && !co('coc')) return cam('coc');
+    if (doiNB && !co('ghichu')) return cam('ghichu');
+    if (tt === 'giu' && d.loai !== 'chua') return { status: 'error', msg: 'Đơn này không phải yêu cầu chừa hàng.' };
+    if (n > 0 && (tt || d.tt) !== 'giu') return { status: 'error', msg: 'Chỉ gia hạn được đơn đang chừa hàng.' };
+
     var sh = tabDon(TAB_DON, TD_DON), head = dauCot(sh);
     var ghi = function (ten, v) { var c = head.indexOf(ten) + 1; if (c > 0) sh.getRange(d._dong, c).setValue(v); };
-    if (tt === 'giu' && d.loai !== 'chua') return { status: 'error', msg: 'Đơn này không phải yêu cầu chừa hàng.' };
-    if (tt && tt !== d.tt) {
-      ghi('Trạng thái', TRANG_THAI[tt]); msg.push(TRANG_THAI[tt]);
+    if (doiTT) {
+      ghi('Trạng thái', TRANG_THAI[tt]); msg.push(TRANG_THAI[tt]); nk.push(TRANG_THAI[d.tt] + ' → ' + TRANG_THAI[tt]);
       if (tt === 'giu') {
         var soNgay = Math.round(Number(p.soNgay) || d.soNgay || 3);
         var han = congNgay(new Date(), soNgay);
         ghi('Hạn chừa', han); ghi('Số ngày chừa', soNgay);
-        msg.push('giữ tới ' + Utilities.formatDate(han, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy'));
+        msg.push('giữ tới ' + Utilities.formatDate(han, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy')); nk.push('giữ ' + soNgay + ' ngày tới ' + Utilities.formatDate(han, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy'));
         try { damBaoNhacChua(); } catch (e) { }
       }
     }
-    if (laAdmin) {
-      var n = Math.round(Number(p.giaHan) || 0);
-      if (n > 0) {
-        if ((tt || d.tt) !== 'giu') return { status: 'error', msg: 'Chỉ gia hạn được đơn đang chừa hàng.' };
-        var tu = d.han && new Date(d.han).getTime() > Date.now() ? new Date(d.han) : new Date();
-        var han2 = congNgay(tu, n);
-        ghi('Hạn chừa', han2); ghi('Số ngày chừa', (d.soNgay || 0) + n); ghi('Xin gia hạn (ngày)', '');
-        msg.push('gia hạn tới ' + Utilities.formatDate(han2, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy'));
-      }
-      if (p.boXin) { ghi('Xin gia hạn (ngày)', ''); msg.push('không đồng ý gia hạn'); }
-      if (p.coc !== undefined && p.coc !== '') ghi('Cọc yêu cầu', Math.max(0, Number(p.coc) || 0));
-      if (p.daCoc !== undefined && p.daCoc !== '') ghi('Đã nhận cọc', Math.max(0, Number(p.daCoc) || 0));
-      if (p.ghiChuNB !== undefined) ghi('Ghi chú nội bộ', chu(p.ghiChuNB).slice(0, 500));
+    if (n > 0) {
+      var tu = d.han && new Date(d.han).getTime() > Date.now() ? new Date(d.han) : new Date();
+      var han2 = congNgay(tu, n), sHan = Utilities.formatDate(han2, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy');
+      ghi('Hạn chừa', han2); ghi('Số ngày chừa', (d.soNgay || 0) + n); ghi('Xin gia hạn (ngày)', '');
+      msg.push('gia hạn tới ' + sHan); nk.push('gia hạn +' + n + ' ngày → ' + sHan);
     }
+    if (p.boXin) { ghi('Xin gia hạn (ngày)', ''); msg.push('không đồng ý gia hạn'); nk.push('không đồng ý xin gia hạn ' + d.xinGH + ' ngày'); }
+    if (cocMoi !== null && cocMoi !== d.coc) { ghi('Cọc yêu cầu', cocMoi); nk.push('cọc yêu cầu ' + tienVN(d.coc) + ' → ' + tienVN(cocMoi)); }
+    if (daCocMoi !== null && daCocMoi !== d.daCoc) { ghi('Đã nhận cọc', daCocMoi); nk.push('đã nhận cọc ' + tienVN(d.daCoc) + ' → ' + tienVN(daCocMoi)); }
+    if (doiNB) { ghi('Ghi chú nội bộ', chu(p.ghiChuNB).slice(0, 500)); nk.push('ghi chú nội bộ: ' + chu(p.ghiChuNB).slice(0, 200)); }
+    if (!nk.length) return { status: 'ok', msg: 'Không có gì thay đổi' };
     ghi('Người xử lý', ti.user); ghi('Cập nhật lúc', new Date());
   } finally { lock.releaseLock(); }
   demXoa('giu');
+  ghiNhatKy(ti, noiBo ? 'Cập nhật đơn' : 'Đại lý tự hủy đơn', d.ma, nk.join(' · '));
   return { status: 'ok', msg: 'Đơn ' + p.ma + (msg.length ? ': ' + msg.join(', ') : ': đã lưu') };
 }
 
@@ -253,6 +275,7 @@ function xinGiaHan(p, ti) {
   var sh = tabDon(TAB_DON, TD_DON), head = dauCot(sh);
   sh.getRange(d._dong, head.indexOf('Xin gia hạn (ngày)') + 1).setValue(n);
   sh.getRange(d._dong, head.indexOf('Cập nhật lúc') + 1).setValue(new Date());
+  ghiNhatKy(ti, 'Xin gia hạn chừa hàng', d.ma, 'thêm ' + n + ' ngày');
   try {
     var t = '⏳ ' + d.ten + ' xin gia hạn chừa hàng ' + d.ma + ' thêm ' + n + ' ngày' + (d.han ? ' (hạn hiện tại ' + ngayVN(d.han) + ')' : '');
     baoQuanTri(t, t + '\n\nDuyệt: ' + WEB_APP_PAGE + 'quan-tri.html#don=' + encodeURIComponent(d.ma));

@@ -187,7 +187,10 @@ function tokInfo(t) {
   var a = v.split('|');
   if (Number(a[2]) < Date.now()) { xoaToken(t); return null; }
   if (dsBiKhoa().indexOf(a[1]) >= 0) return null; // tài khoản đã bị khóa
-  return { role: a[0], user: a[1] };
+  var role = a[0];
+  // Vai trò lấy theo tab Users hiện tại (đổi vai trò / xóa tài khoản có hiệu lực ngay, không đợi token hết hạn).
+  try { var tk = dsTaiKhoan(); if (!tk[a[1]]) return null; if (tk[a[1]].role) role = tk[a[1]].role; } catch (e) { }
+  return { role: role, user: a[1] };
 }
 // Dọn token hết hạn (gọi lúc đăng nhập, thỉnh thoảng).
 function donToken() {

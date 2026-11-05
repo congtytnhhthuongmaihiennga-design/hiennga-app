@@ -8,7 +8,7 @@
 <title>Quản trị đơn hàng – Hiển Nga</title>
 <link rel="icon" type="image/png" href="img/favicon.png">
 <link rel="stylesheet" href="style.css?v=13">
-<link rel="stylesheet" href="quan-tri.css?v=4">
+<link rel="stylesheet" href="quan-tri.css?v=6">
 </head>
 <body class="qt">
 
@@ -35,6 +35,9 @@
     <div class="qt-brand"><span class="logo"><img src="img/logo-mark.png" alt=""></span><b>Quản trị</b></div>
     <button type="button" class="qt-mi on" data-qt="tong">▦ Bảng điều khiển</button>
     <button type="button" class="qt-mi" data-qt="don">🛒 Đơn hàng <span class="qt-badge" id="qt-badge" hidden></span></button>
+    <button type="button" class="qt-mi" data-qt="baocao" id="qt-m-bc" hidden>📊 Báo cáo</button>
+    <button type="button" class="qt-mi" data-qt="nhatky" id="qt-m-nk" hidden>📜 Nhật ký</button>
+    <button type="button" class="qt-mi" data-qt="nhanvien" id="qt-m-nv" hidden>👥 Nhân viên & quyền</button>
     <div class="qt-menu-cuoi">
       <a class="qt-mi" href="./">📱 Mở app bảng giá</a>
       <div class="qt-ai" id="qt-ai"></div>
@@ -49,6 +52,6 @@
 <div class="toast" id="toast" hidden></div>
 
 <script src="config.js?v=7"></script>
-<script src="quan-tri.js?v=2"></script>
+<script src="quan-tri.js?v=3"></script>
 </body>
 </html>

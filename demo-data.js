@@ -53,6 +53,16 @@
   function sao(o) { return JSON.parse(JSON.stringify(o)); }
   function tre(v) { return new Promise(function (ok) { setTimeout(function () { ok(v); }, 350); }); }
 
+  var TEN_QUYEN = { don: 'Duyệt đơn & đổi trạng thái giao hàng', chua: 'Duyệt chừa hàng / gia hạn / nhả hàng', coc: 'Ghi tiền cọc', ghichu: 'Ghi chú nội bộ', baocao: 'Xem báo cáo doanh số', nhatky: 'Xem nhật ký thao tác' };
+  var quyenNV = { nv: [] };
+  function quyenCua(s) { return !s ? [] : s.role === 'admin' ? Object.keys(TEN_QUYEN) : s.role === 'nv' ? (quyenNV[s.username] || []) : []; }
+  function coQ(s, q) { return quyenCua(s).indexOf(q) >= 0; }
+  var nhatKy = [
+    { luc: '2026-11-03T16:02:00+07:00', user: 'admin', role: 'admin', hd: 'Cập nhật đơn', ma: 'HN261103-004', ct: 'Đã xác nhận → Đã giao' },
+    { luc: '2026-11-04T09:12:00+07:00', user: 'daily', role: 'khachhang', hd: 'Gửi đơn', ma: 'HN261104-007', ct: '1 mã · 9.216.000đ' },
+    { luc: '2026-11-05T07:40:00+07:00', user: 'admin', role: 'admin', hd: 'Đăng nhập', ma: '', ct: '' }
+  ];
+  function ghiNK(s, hd, ma, ct) { nhatKy.push({ luc: new Date().toISOString(), user: s ? s.username : '', role: s ? s.role : '', hd: hd, ma: ma || '', ct: ct || '' }); }
   window.DEMO_API = function (action, p, sess) {
     if (action === 'getAll') {
       var ds = sao(data);
@@ -62,7 +72,7 @@
     if (action === 'getTonKho') {
       if (!sess) return tre({ status: 'error', msg: 'need_login' });
       var t = sao(ton), giu = {};
-      donDemo.forEach(function (d) { if (['giu', 'xacnhan', 'danggiao'].indexOf(d.tt) >= 0) d.items.forEach(function (x) { giu[x.ma] = (giu[x.ma] || 0) + x.sl; }); });
+      donDemo.forEach(function (d) { if (['moi', 'giu', 'xacnhan', 'danggiao'].indexOf(d.tt) >= 0) d.items.forEach(function (x) { giu[x.ma] = (giu[x.ma] || 0) + x.sl; }); });
       Object.keys(giu).forEach(function (m) {
         var d = t[m]; if (!d) return;
         d.tonGoc = d.tong; d.giu = giu[m]; d.tong = Math.max(0, d.tong - giu[m]);
@@ -78,7 +88,7 @@
     if (action === 'login') {
       var u = String(p.username || '').toLowerCase();
       var role = u.indexOf('admin') === 0 ? 'admin' : (u.indexOf('nv') === 0 ? 'nv' : 'khachhang');
-      return tre({ status: 'ok', token: 'demo', role: role, username: u, name: u + ' (thử)', tenCty: role === 'khachhang' ? 'Cửa hàng VLXD Mẫu' : '' });
+      return tre({ status: 'ok', token: 'demo', role: role, username: u, name: u + ' (thử)', tenCty: role === 'khachhang' ? 'Cửa hàng VLXD Mẫu' : '', quyen: quyenCua({ role: role, username: u }) });
     }
     if (action === 'listUsers') return tre(sess && sess.role === 'admin' ? { status: 'ok', data: sao(users) } : { status: 'error', msg: 'forbidden' });
     if (action === 'luuUser') {
@@ -101,6 +111,7 @@
       donDemo.unshift({ ma: ma, ngay: new Date().toISOString(), tt: 'moi', user: sess.username, ten: p.tenKH, sdt: p.sdt, hinhThuc: p.hinhThuc === 'nhan' ? 'Nhận tại kho' : 'Giao tận nơi',
         diaChi: p.diaChi, ngayCan: p.ngayCan, ghiChu: p.ghiChu, tong: tong, items: its, xuLy: '', ghiChuNB: '',
         loai: chua ? 'chua' : '', soNgay: chua ? cfg.ngay : 0, coc: chua && cfg.coc ? Math.round(tong * cfg.coc / 100000) * 1000 : 0, daCoc: 0, han: '', xinGH: 0 });
+      ghiNK(sess, chua ? 'Gửi yêu cầu chừa hàng' : 'Gửi đơn', ma, its.length + ' mã');
       return tre({ status: 'ok', ma: ma, tong: tong });
     }
     if (action === 'donCuaToi') return tre({ status: 'ok', data: sao(donDemo.filter(function (d) { return d.user === (sess && sess.username); })) });
@@ -108,12 +119,19 @@
       if (!sess || (sess.role !== 'admin' && sess.role !== 'nv')) return tre({ status: 'error', msg: 'forbidden' });
       var dem = { moi: 0, giu: 0, xacnhan: 0, danggiao: 0, dagiao: 0, huy: 0, tuchoi: 0, hetHan: 0, xinGH: 0 };
       donDemo.forEach(function (d) { dem[d.tt]++; if (d.tt === 'giu' && d.han && new Date(d.han) < new Date()) dem.hetHan++; if (d.tt === 'giu' && d.xinGH) dem.xinGH++; });
-      return tre({ status: 'ok', data: sao(donDemo.filter(function (d) { return !p.tt || d.tt === p.tt; })), dem: dem, chuaCfg: sao(chuaCfg) });
+      return tre({ status: 'ok', data: sao(donDemo.filter(function (d) { return !p.tt || d.tt === p.tt; })), dem: dem, chuaCfg: sao(chuaCfg), quyen: quyenCua(sess), tenQuyen: TEN_QUYEN });
     }
     if (action === 'capNhatDon') {
       var dd = donDemo.filter(function (d) { return d.ma === p.ma; })[0];
       if (!dd) return tre({ status: 'error', msg: 'Không thấy đơn' });
-      if (sess.role !== 'admin' && !(dd.user === sess.username && p.tt === 'huy' && dd.tt === 'moi')) return tre({ status: 'error', msg: 'forbidden' });
+      var noiBo = sess.role === 'admin' || sess.role === 'nv';
+      if (!noiBo && !(dd.user === sess.username && p.tt === 'huy' && dd.tt === 'moi')) return tre({ status: 'error', msg: 'forbidden' });
+      var qTT = p.tt === 'giu' || dd.tt === 'giu' || (dd.loai === 'chua' && ['moi', 'huy', 'tuchoi'].indexOf(dd.tt) >= 0) ? 'chua' : 'don';
+      var can = function (q) { return tre({ status: 'error', msg: 'Tài khoản chưa có quyền: ' + TEN_QUYEN[q] }); };
+      if (noiBo && p.tt && p.tt !== dd.tt && !coQ(sess, qTT)) return can(qTT);
+      if (noiBo && (p.giaHan || p.boXin) && !coQ(sess, 'chua')) return can('chua');
+      if (noiBo && p.ghiChuNB !== undefined && p.ghiChuNB !== dd.ghiChuNB && !coQ(sess, 'ghichu')) return can('ghichu');
+      ghiNK(sess, noiBo ? 'Cập nhật đơn' : 'Đại lý tự hủy đơn', dd.ma, (p.tt && p.tt !== dd.tt ? dd.tt + ' → ' + p.tt : '') + (p.giaHan ? ' gia hạn +' + p.giaHan + ' ngày' : ''));
       if (p.tt === 'giu' && dd.loai !== 'chua') return tre({ status: 'error', msg: 'Đơn này không phải yêu cầu chừa hàng.' });
       var hanMoi = function (tu, n) { var x = new Date(tu.getTime() + n * 86400000); x.setHours(23, 59, 0, 0); return x.toISOString(); };
       if (p.tt && p.tt !== dd.tt) { dd.tt = p.tt; if (p.tt === 'giu') dd.han = hanMoi(new Date(), dd.soNgay || 3); }
@@ -127,8 +145,45 @@
     if (action === 'xinGiaHan') {
       var dx = donDemo.filter(function (d) { return d.ma === p.ma && d.user === (sess && sess.username); })[0];
       if (!dx || dx.tt !== 'giu') return tre({ status: 'error', msg: 'Chỉ xin gia hạn được đơn đang chừa hàng.' });
-      dx.xinGH = Number(p.soNgay) || 0;
+      dx.xinGH = Number(p.soNgay) || 0; ghiNK(sess, 'Xin gia hạn chừa hàng', dx.ma, 'thêm ' + dx.xinGH + ' ngày');
       return tre({ status: 'ok', msg: 'Đã gửi xin gia hạn ' + dx.xinGH + ' ngày – chờ công ty duyệt' });
+    }
+    if (action === 'nhatKy') {
+      if (!sess || (sess.role !== 'admin' && sess.role !== 'nv') || (!p.maDon && !coQ(sess, 'nhatky'))) return tre({ status: 'error', msg: 'forbidden' });
+      return tre({ status: 'ok', data: sao(nhatKy.filter(function (x) { return !p.maDon || x.ma === p.maDon; })).reverse() });
+    }
+    if (action === 'dsNhanVien') {
+      if (!sess || sess.role !== 'admin') return tre({ status: 'error', msg: 'forbidden' });
+      return tre({ status: 'ok', tenQuyen: TEN_QUYEN, data: users.filter(function (u) { return u.role !== 'khachhang'; }).map(function (u) { var x = sao(u); x.quyen = quyenCua({ role: u.role, username: u.username }); return x; }) });
+    }
+    if (action === 'luuQuyen') {
+      if (!sess || sess.role !== 'admin') return tre({ status: 'error', msg: 'forbidden' });
+      quyenNV[p.username] = String(p.quyen || '').split(',').filter(function (k) { return TEN_QUYEN[k]; });
+      ghiNK(sess, 'Đổi quyền nhân viên', '', p.username + ': ' + (quyenNV[p.username].join(', ') || 'chỉ xem'));
+      return tre({ status: 'ok', msg: 'Đã lưu quyền cho ' + p.username + ' (thử)' });
+    }
+    if (action === 'baoCao') {
+      if (!coQ(sess, 'baocao')) return tre({ status: 'error', msg: 'forbidden' });
+      var nhomCua = {}; data.forEach(function (g) { nhomCua[g.ma] = g.nhom; });
+      var kq = { soDon: 0, doanhSo: 0, daGiao: 0, choDuyet: 0, huy: 0, tuChoi: 0, soChua: 0, cocDaNhan: 0, theoNgay: {}, daiLy: {}, hang: {}, nhom: {} };
+      // Thêm đơn giả rải rác 60 ngày cho biểu đồ có hình (chỉ trong báo cáo thử).
+      var ds = donDemo.slice(), r = 7;
+      for (var i = 0; i < 60; i++) { r = (r * 9301 + 49297) % 233280; if (r % 3) continue; var ng = new Date(Date.now() - i * 86400000), g = data[r % data.length], sl = 1 + r % 20;
+        ds.push({ ngay: ng.toISOString(), tt: ['dagiao', 'xacnhan', 'dagiao', 'huy'][r % 4], user: 'daily' + (r % 4), ten: ['VLXD Minh Phát', 'VLXD Hòa Bình', 'Cửa hàng Mẫu', 'VLXD Phú Tân'][r % 4], tong: sl * (g.dl || g.ny), loai: '', items: [{ ma: g.ma, ten: g.ten, sl: sl, dv: g.dvt, tien: sl * (g.dl || g.ny) }] }); }
+      ds.forEach(function (d) {
+        var ngay = d.ngay.slice(0, 10); if (ngay < p.tu || ngay > p.den) return;
+        kq.soDon++; if (d.tt === 'moi') kq.choDuyet++; if (d.tt === 'huy') kq.huy++; if (d.tt === 'tuchoi') kq.tuChoi++; if (d.loai === 'chua') kq.soChua++; kq.cocDaNhan += d.daCoc || 0;
+        var n = kq.theoNgay[ngay] || (kq.theoNgay[ngay] = { ngay: ngay, soDon: 0, doanhSo: 0 }); n.soDon++;
+        if (['xacnhan', 'danggiao', 'dagiao'].indexOf(d.tt) < 0) return;
+        kq.doanhSo += d.tong; n.doanhSo += d.tong; if (d.tt === 'dagiao') kq.daGiao += d.tong;
+        var dl = kq.daiLy[d.user] || (kq.daiLy[d.user] = { user: d.user, ten: d.ten, soDon: 0, doanhSo: 0 }); dl.soDon++; dl.doanhSo += d.tong;
+        d.items.forEach(function (x) { var h = kq.hang[x.ma] || (kq.hang[x.ma] = { ma: x.ma, ten: x.ten, dv: x.dv, sl: 0, tien: 0 }); h.sl += x.sl; h.tien += x.tien;
+          var t = nhomCua[x.ma] || 'Khác', nn = kq.nhom[t] || (kq.nhom[t] = { nhom: t, tien: 0 }); nn.tien += x.tien; });
+      });
+      var sx = function (o, k) { return Object.keys(o).map(function (x) { return o[x]; }).sort(function (a, b) { return b[k] - a[k]; }); };
+      kq.theoNgay = Object.keys(kq.theoNgay).sort().map(function (x) { return kq.theoNgay[x]; });
+      kq.daiLy = sx(kq.daiLy, 'doanhSo').slice(0, 30); kq.hang = sx(kq.hang, 'tien').slice(0, 30); kq.nhom = sx(kq.nhom, 'tien');
+      return tre({ status: 'ok', tu: p.tu, den: p.den, data: kq });
     }
     return tre({ status: 'ok' });
   };

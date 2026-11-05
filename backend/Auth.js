@@ -10,8 +10,14 @@ function tabUsers() {
   var rows = sh.getDataRange().getValues();
   var c = timCot(rows[0] || [], {
     user: ['Username'], ten: ['Họ tên', 'Name'], role: ['Vai trò', 'Role'], moi: ['Mật khẩu mới'],
-    hash: ['PasswordHash'], cty: ['Tên công ty'], sdt: ['SĐT'], dc: ['Địa chỉ'], khoa: ['Khóa']
+    hash: ['PasswordHash'], cty: ['Tên công ty'], sdt: ['SĐT'], dc: ['Địa chỉ'], khoa: ['Khóa'], quyen: ['Quyền']
   });
+  // GĐ3: thêm cột "Quyền" (quyền nhân viên) nếu tab cũ chưa có.
+  if (c.quyen === undefined && c.user !== undefined && rows.length) {
+    var cot = rows[0].filter(function (x) { return chu(x); }).length;
+    sh.getRange(1, cot + 1).setValue('Quyền').setFontWeight('bold');
+    c.quyen = cot;
+  }
   if (c.user === undefined || c.hash === undefined || c.role === undefined) {
     throw new Error('Tab "' + TAB.users + '" thiếu cột Username / Vai trò / PasswordHash.');
   }
@@ -53,13 +59,14 @@ function login(p) {
       u.sh.getRange(i + 1, c.hash + 1).setValue(hash);
       u.sh.getRange(i + 1, c.moi + 1).setValue('');
     }
-    if (!hash || bamMatKhau(user, pw) !== hash) break;
+    if (!hash || bamMatKhau(user, pw) !== hash) { ghiNhatKy({ user: user, role: vaiTro(r[c.role]) }, 'Đăng nhập sai mật khẩu', '', 'lần ' + (soSai + 1)); break; }
     var role = vaiTro(r[c.role]);
     if (!role) return { status: 'error', msg: 'Tài khoản chưa có vai trò hợp lệ (admin / nv / khachhang).' };
     cache.remove(kSai);
     if (Math.random() < 0.1) donToken();
     function o(k) { return c[k] === undefined ? '' : chu(r[c[k]]); }
-    return { status: 'ok', token: taoToken(role, user), role: role, username: user, name: o('ten') || user, tenCty: o('cty'), sdt: o('sdt'), diaChi: o('dc') };
+    if (role !== 'khachhang') ghiNhatKy({ user: user, role: role }, 'Đăng nhập', '', '');
+    return { status: 'ok', token: taoToken(role, user), role: role, username: user, name: o('ten') || user, tenCty: o('cty'), sdt: o('sdt'), diaChi: o('dc'), quyen: quyenCua(role, user) };
   }
   cache.put(kSai, String(soSai + 1), 600);
   return { status: 'error', msg: 'Sai tài khoản hoặc mật khẩu.' };
@@ -78,7 +85,7 @@ function listUsers() {
 }
 
 // Thêm mới hoặc sửa (theo Username). Mật khẩu để trống = giữ nguyên.
-function luuUser(p) {
+function luuUser(p, ti) {
   var user = chu(p.username).toLowerCase();
   if (!/^[a-z0-9._-]{3,40}$/.test(user)) return { status: 'error', msg: 'Username 3–40 ký tự, chỉ chữ không dấu, số, dấu . _ -' };
   var role = vaiTro(p.role);
@@ -97,6 +104,7 @@ function luuUser(p) {
   if (pw) { dat('hash', bamMatKhau(user, pw)); dat('moi', ''); }
   if (dong >= 0) u.sh.getRange(dong + 1, 1, 1, r.length).setValues([r]);
   else u.sh.appendRow(r);
-  CacheService.getScriptCache().remove('ds_khoa');
+  xoaDemTaiKhoan();
+  ghiNhatKy(ti, dong >= 0 ? 'Sửa tài khoản' : 'Tạo tài khoản', '', user + ' · vai trò ' + role + (r[c.khoa] === 'Có' ? ' · KHÓA' : '') + (pw ? ' · đặt mật khẩu mới' : ''));
   return { status: 'ok', msg: dong >= 0 ? 'Đã cập nhật ' + user : 'Đã tạo ' + user };
 }
