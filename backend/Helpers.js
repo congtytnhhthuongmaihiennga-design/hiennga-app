@@ -80,12 +80,12 @@ function demLay(khoa) {
   for (var j = 0; j < keys.length; j++) { if (got[keys[j]] == null) return null; s += got[keys[j]]; }
   try { return JSON.parse(s); } catch (e) { return null; }
 }
-function demLuu(khoa, obj) {
+function demLuu(khoa, obj, giay) {
   var s = JSON.stringify(obj), m = {}, n = 0;
   for (var i = 0; i < s.length; i += MANH) m[khoa + '_' + (n++)] = s.substr(i, MANH);
   if (n > 90) return; // quá lớn (~8MB) thì thôi không đệm
   m[khoa + '_n'] = String(n);
-  CacheService.getScriptCache().putAll(m, CACHE_GIAY);
+  CacheService.getScriptCache().putAll(m, giay || CACHE_GIAY);
 }
 function demXoa(khoa) {
   var c = CacheService.getScriptCache();
@@ -94,12 +94,46 @@ function demXoa(khoa) {
   c.removeAll(keys);
 }
 // Lấy từ đệm, không có thì tính rồi lưu. Luôn trả bản sao mới (sửa thoải mái).
-function quaDem(khoa, tinh) {
+// tab: tên tab (Sheet chính) hoặc hàm trả về tab. Đệm kèm "dấu" tên tab + số dòng × số cột;
+// dán dữ liệu mới làm dấu đổi thì đọc lại ngay (onEdit không phải lúc nào cũng chạy khi dán cả bảng).
+function quaDem(khoa, tinh, tab, giay) {
+  var dau = '';
+  if (tab) {
+    var sh = typeof tab === 'function' ? tab() : layTab(tab, false);
+    if (sh) dau = sh.getName() + ':' + sh.getLastRow() + 'x' + sh.getLastColumn();
+  }
   var v = demLay(khoa);
-  if (v) return v;
+  if (v && (v._dau || '') === dau) return v;
   v = tinh();
-  if (v && v.status === 'ok') demLuu(khoa, v);
+  if (v && v.status === 'ok') { v._dau = dau; demLuu(khoa, v, giay); }
   return JSON.parse(JSON.stringify(v));
+}
+
+// ---------- Sheet tồn kho riêng ----------
+function ssTon() {
+  var id = typeof SHEET_TON_KHO_ID === 'string' ? SHEET_TON_KHO_ID : '';
+  if (!id) return SpreadsheetApp.getActiveSpreadsheet();
+  try { return SpreadsheetApp.openById(id); }
+  catch (e) { throw new Error('Không mở được Sheet Tồn kho – kiểm tra Sheet đó đã chia sẻ cho tài khoản Hiển Nga (quyền chỉnh sửa) chưa.'); }
+}
+// Tab tồn kho: đúng tên "Tồn kho", hoặc tên sheet gốc khi nhập file Excel ("TỒN TỔNG HỢP"),
+// hoặc tab đầu tiên có cột "Mã vật tư" / "Mã hàng" trong 15 dòng đầu.
+function layTabTon(batBuoc) {
+  var ss = ssTon(), ten = [TAB.tonkho].concat(TEN_TAB_TON_KHAC);
+  for (var i = 0; i < ten.length; i++) {
+    var sh = ss.getSheetByName(ten[i]);
+    if (sh && sh.getLastRow() > 1) return sh;
+  }
+  // Phải có CẢ cột mã lẫn cột số lượng (tránh nhận nhầm tab Giá cũng có cột "Mã hàng").
+  var ds = ss.getSheets();
+  for (var j = 0; j < ds.length; j++) {
+    var s = ds[j], n = Math.min(s.getLastRow(), 15), m = Math.min(s.getLastColumn(), 30);
+    if (n < 1 || m < 1) continue;
+    var dau = s.getRange(1, 1, n, m).getValues(), hi = timDongTieuDe(dau, COT_TON.ma);
+    if (hi >= 0 && timCot(dau[hi], COT_TON).sl !== undefined) return s;
+  }
+  if (batBuoc) throw new Error('Sheet Tồn kho chưa có dữ liệu: cần tab "' + TAB.tonkho + '" có cột Mã vật tư, Kho, Tồn.');
+  return null;
 }
 
 // ---------- Mã hóa mật khẩu + token đăng nhập ----------

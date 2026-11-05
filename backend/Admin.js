@@ -46,18 +46,40 @@ function khoiTaoSheet() {
   try { SpreadsheetApp.getUi().alert(msg); } catch (e) { Logger.log(msg); }
 }
 
-// Sheet mới tinh (chưa có tab nào của app) thì tự tạo đủ tab, khỏi phải bấm menu.
-// Chỉ khi THIẾU TẤT CẢ: tab bị đổi tên sau này vẫn báo lỗi rõ, không tạo tab trống thay thế.
+// Sheet mới tinh thì tự tạo đủ tab, khỏi phải bấm menu. Chỉ khi Sheet TRỐNG HOÀN TOÀN (mọi tab đều rỗng):
+// tab bị đổi tên, hay lỡ nhập nhầm file khác vào, vẫn báo lỗi rõ chứ không chèn tab trống lẫn vào dữ liệu.
+function sheetTrong(ss) { return ss.getSheets().every(function (s) { return s.getLastRow() === 0; }); }
 function khoiTaoLanDau() {
   var c = CacheService.getScriptCache();
-  if (c.get('da_khoi_tao')) return;
+  if (c.get('da_khoi_tao_2')) return;
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var coTab = Object.keys(TAB).some(function (k) { return !!ss.getSheetByName(TAB[k]); });
-  if (!coTab) {
-    Object.keys(TIEU_DE).forEach(function (k) { khoiTaoTab(TAB[k], TIEU_DE[k]); });
+  if (sheetTrong(ss)) {
+    Object.keys(TIEU_DE).forEach(function (k) { if (k !== 'tonkho' || !SHEET_TON_RIENG()) khoiTaoTab(TAB[k], TIEU_DE[k]); });
     muoi();
   }
-  c.put('da_khoi_tao', '1', 21600);
+  try { khoiTaoSheetTon(); } catch (e) { }
+  c.put('da_khoi_tao_2', '1', 3600);
+}
+function SHEET_TON_RIENG() { return typeof SHEET_TON_KHO_ID === 'string' && !!SHEET_TON_KHO_ID; }
+
+// Sheet Tồn kho riêng: tạo tab "Tồn kho" (nếu Sheet đang trống) và tab "Hướng dẫn" cho người nhập kho.
+function khoiTaoSheetTon() {
+  if (!SHEET_TON_RIENG()) return;
+  var ss = ssTon();
+  if (sheetTrong(ss) && !ss.getSheetByName(TAB.tonkho)) {
+    var sh = ss.getSheets()[0];
+    sh.setName(TAB.tonkho);
+    sh.getRange(1, 1, 1, 5).setValues([TIEU_DE_TON]).setFontWeight('bold').setBackground('#E3F2FD');
+    sh.setFrozenRows(1);
+    sh.setColumnWidth(3, 380);
+  }
+  if (!ss.getSheetByName(TAB_HUONG_DAN_TON)) {
+    var hd = ss.insertSheet(TAB_HUONG_DAN_TON);
+    hd.getRange(1, 1, HUONG_DAN_TON.length, 2).setValues(HUONG_DAN_TON.map(function (d) { return [d, '']; }));
+    hd.getRange(1, 1).setFontWeight('bold').setFontSize(13);
+    hd.getRange(2, 2).setValue('(chưa đọc lần nào)').setFontColor('#1F8A3B').setFontWeight('bold');
+    hd.setColumnWidth(1, 560); hd.setColumnWidth(2, 520);
+  }
 }
 
 function xoaDem() {
@@ -72,9 +94,9 @@ function xoaDemCoBao() {
 // Chạy theo lịch: đọc sẵn dữ liệu vào đệm để app mở nhanh.
 function warmCache() {
   xoaDem();
-  quaDem('gia', docGia);
-  quaDem('anh', docAnh);
-  try { quaDem('tonkho', docTonKho); } catch (e) { }
+  quaDem('gia', docGia, TAB.gia);
+  quaDem('anh', docAnh, TAB.anh);
+  try { quaDem('tonkho', docTonKho, function () { return layTabTon(false); }, CACHE_GIAY_TON); } catch (e) { }
 }
 
 function caiLamMoiTuDong() {

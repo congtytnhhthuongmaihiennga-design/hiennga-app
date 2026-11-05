@@ -27,7 +27,12 @@ function xuLy(p) {
     var laAdmin = !!(ti && ti.role === 'admin');
     var cam = { status: 'error', msg: 'forbidden' };
     switch (a) {
-      case 'ping':      return { status: 'ok', role: ti ? ti.role : '', tabs: SpreadsheetApp.getActiveSpreadsheet().getSheets().map(function (s) { return s.getName(); }) };
+      // Chẩn đoán: tên tab + số dòng/cột (không có dữ liệu giá nào).
+      case 'ping':
+        var tenTab = function (ss) { return ss.getSheets().map(function (s) { return s.getName() + ' (' + s.getLastRow() + 'x' + s.getLastColumn() + ')'; }); };
+        var ton;
+        try { ton = SHEET_TON_RIENG() ? tenTab(ssTon()) : 'dùng tab trong Sheet chính'; } catch (e) { ton = 'LỖI: ' + e.message; }
+        return { status: 'ok', role: ti ? ti.role : '', tabs: tenTab(SpreadsheetApp.getActiveSpreadsheet()), tonKho: ton };
       case 'getAll':    return getAll(ti);
       case 'getTonKho': return ti ? getTonKho(ti) : { status: 'error', msg: 'need_login' };
       case 'login':     return login(p);

@@ -85,12 +85,12 @@ function quyCachThung(dvt, ten) {
 }
 
 function docTonKho() {
-  var sh = layTab(TAB.tonkho, true);
+  var sh = layTabTon(true);
   var rows = sh.getDataRange().getValues();
   var hi = timDongTieuDe(rows, COT_TON.ma);
-  if (hi < 0) return { status: 'error', msg: 'Tab "' + TAB.tonkho + '" không có cột "Mã hàng" – kiểm tra đã dán đúng bản xuất từ phần mềm kho chưa.' };
+  if (hi < 0) return { status: 'error', msg: 'Tab "' + sh.getName() + '" (Sheet Tồn kho) không có cột "Mã vật tư" – kiểm tra đã dán / nhập đúng bản xuất từ phần mềm kho chưa.' };
   var c = timCot(rows[hi], COT_TON);
-  if (c.sl === undefined) return { status: 'error', msg: 'Tab "' + TAB.tonkho + '" thiếu cột "Số lượng".' };
+  if (c.sl === undefined) return { status: 'error', msg: 'Tab "' + sh.getName() + '" (Sheet Tồn kho) thiếu cột "Tồn" / "Số lượng".' };
 
   // Nối mã tồn kho -> mã hàng (chỉ khi 2 file dùng mã khác nhau).
   var noi = {}, shN = layTab(TAB.noima, false);
@@ -125,22 +125,33 @@ function docTonKho() {
     var d = data[ma];
     d.kho = Object.keys(d.kho).map(function (t) { return d.kho[t]; }).sort(function (a, b) { return b.tong - a.tong; });
   });
+  baoDaNhan(sh, Object.keys(data).length, rows.length - hi - 1);
   return { status: 'ok', data: data, luc: new Date().toISOString() };
+}
+
+// Ghi "App đã nhận …" vào tab Hướng dẫn của Sheet Tồn kho để người nhập kho biết dán đúng chưa.
+function baoDaNhan(sh, soMaCon, soDong) {
+  try {
+    var hd = sh.getParent().getSheetByName(TAB_HUONG_DAN_TON);
+    if (!hd) return;
+    var luc = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'HH:mm dd/MM/yyyy');
+    hd.getRange(2, 2).setValue('✅ App đã đọc tab "' + sh.getName() + '": ' + soDong + ' dòng, ' + soMaCon + ' mã còn hàng – lúc ' + luc);
+  } catch (e) { }
 }
 
 // ---------- Trả cho app (đã lọc theo quyền) ----------
 function getAll(ti) {
-  var gia = quaDem('gia', docGia);
+  var gia = quaDem('gia', docGia, TAB.gia);
   if (gia.status !== 'ok') return gia;
   // Chưa đăng nhập: máy chủ KHÔNG gửi giá đại lý xuống trình duyệt.
   if (!ti) gia.data.forEach(function (p) { p.dl = 0; });
-  var anh = quaDem('anh', docAnh);
+  var anh = quaDem('anh', docAnh, TAB.anh);
   var capNhat = PropertiesService.getScriptProperties().getProperty('CAP_NHAT_GIA') || '';
   return { status: 'ok', data: gia.data, anh: anh.data || {}, luc: gia.luc, capNhat: capNhat, daDangNhap: !!ti };
 }
 
 function getTonKho(ti) {
-  var res = quaDem('tonkho', docTonKho);
+  var res = quaDem('tonkho', docTonKho, function () { return layTabTon(false); }, CACHE_GIAY_TON);
   if (res.status !== 'ok' || ti.role !== 'khachhang') return res;
   // Đại lý: không gửi tên kho, số lô, số thật – mọi số chặn trần (app hiện "50+").
   var cap = function (n) { return Math.min(Number(n) || 0, TRAN_TON_KHACH); };

@@ -6,3 +6,6 @@
 # Script ID của dự án Apps Script
 .clasp.json
 backend/.clasp.json
+
+# Thong so rieng (ma Sheet ton kho) – chi day len Apps Script
+backend/Rieng.js
