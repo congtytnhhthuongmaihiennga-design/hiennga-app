@@ -11,13 +11,13 @@
   var DEMO = !CFG.APPS_URL || /[?&]demo=1/.test(location.search);
   var TEN_TT = { moi: 'Chờ duyệt', giu: 'Đang chừa hàng', xacnhan: 'Đã xác nhận', danggiao: 'Đang giao', dagiao: 'Đã giao', huy: 'Đã hủy', tuchoi: 'Từ chối' };
   var THU_TU = ['moi', 'giu', 'xacnhan', 'danggiao', 'dagiao', 'tuchoi', 'huy'];
-  var TEN_QUYEN = { don: 'Duyệt đơn & đổi trạng thái giao hàng', chua: 'Duyệt chừa hàng / gia hạn / nhả hàng', coc: 'Ghi tiền cọc', ghichu: 'Ghi chú nội bộ', baocao: 'Xem báo cáo doanh số', nhatky: 'Xem nhật ký thao tác' };
+  var TEN_QUYEN = { don: 'Duyệt đơn (xác nhận / từ chối / hủy)', giao: 'Kho & giao hàng (xuất kho, đang giao, đã giao)', chua: 'Duyệt chừa hàng / gia hạn / nhả hàng', coc: 'Ghi tiền cọc', ghichu: 'Ghi chú nội bộ', nhapgia: 'Nhập / sửa giá', nhapton: 'Nhập tồn kho (mở quyền sửa Sheet Tồn kho)', baocao: 'Xem báo cáo doanh số', nhatky: 'Xem nhật ký thao tác' };
   var LS = {
     get: function (k) { try { return JSON.parse(localStorage.getItem('hn_' + k)); } catch (e) { return null; } },
     set: function (k, v) { try { localStorage.setItem('hn_' + k, JSON.stringify(v)); } catch (e) { } }
   };
   var S = { sess: (function (s) { return s && (s.token === 'demo') === DEMO ? s : null; })(LS.get('sess')), don: [], dem: {}, trang: 'tong', loc: '', q: '', moMa: '', soMoiCu: -1,
-    ton: null, chuaCfg: [], quyen: null, ls: {}, bc: { kieu: 'thangnay' }, nk: { ds: null, q: '' }, nv: null };
+    ton: null, chuaCfg: [], quyen: null, ls: {}, bc: { kieu: 'thangnay' }, nk: { ds: null, q: '' }, nv: null, gia: { ds: null, q: '' }, tonTT: null };
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function tien(n) { return Number(n || 0).toLocaleString('vi-VN') + 'đ'; }
@@ -69,7 +69,7 @@
       S.soMoiCu = moi;
       $('qt-badge').hidden = !moi; $('qt-badge').textContent = moi;
       document.title = (moi ? '(' + moi + ') ' : '') + 'Quản trị đơn hàng – ' + (CFG.TEN_APP || '');
-      if (S.trang === 'tong' || S.trang === 'don') ve();
+      if (S.trang === 'tong' || S.trang === 'don' || S.trang === 'giao') ve();
       // Tự làm mới không vẽ lại ngăn chi tiết khi đang gõ (khỏi mất chữ).
       if (S.moMa && !(imLang && $('qt-ngan').contains(document.activeElement))) moDon(S.moMa);
     }).catch(function (e) { if (!imLang) toast('Không tải được đơn: ' + (e.message || e)); });
@@ -78,6 +78,11 @@
     $('qt-m-bc').hidden = !co('baocao');
     $('qt-m-nk').hidden = !co('nhatky');
     $('qt-m-nv').hidden = !laAdmin();
+    $('qt-m-giao').hidden = !(co('giao') || co('don'));
+    $('qt-m-gia').hidden = !co('nhapgia');
+    $('qt-m-ton').hidden = !co('nhapton');
+    var cg = S.don.filter(function (d) { return d.tt === 'xacnhan'; }).length;
+    $('qt-badge-giao').hidden = !cg; $('qt-badge-giao').textContent = cg;
   }
 
   // ---------- Chừa hàng ----------
@@ -110,12 +115,14 @@
   // ---------- Vẽ ----------
   function ve() {
     document.querySelectorAll('[data-qt]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-qt') === S.trang); });
-    var v = { don: veDon, baocao: veBaoCao, nhatky: veNhatKy, nhanvien: veNhanVien }[S.trang] || veTong;
+    var v = { don: veDon, baocao: veBaoCao, nhatky: veNhatKy, nhanvien: veNhanVien, giao: veGiao, gia: veGia, ton: veTon }[S.trang] || veTong;
     $('qt-main').innerHTML = v();
     var q = $('qt-q'); if (q) { q.value = S.q; }
     if (S.trang === 'baocao' && !S.bc.kq && !S.bc.dang) taiBaoCao();
     if (S.trang === 'nhatky' && !S.nk.ds) taiNhatKy();
     if (S.trang === 'nhanvien' && !S.nv) taiNhanVien();
+    if (S.trang === 'gia' && !S.gia.ds) taiGia();
+    if (S.trang === 'ton' && !S.tonTT) taiTonTT();
   }
   function trongThang(d) { var x = new Date(d.ngay), n = new Date(); return x.getMonth() === n.getMonth() && x.getFullYear() === n.getFullYear(); }
   function veTong() {
@@ -167,7 +174,11 @@
     xacnhan: [['danggiao', 'Đang giao', 'btn-chinh'], ['dagiao', 'Đã giao', 'btn-xanh'], ['huy', 'Hủy đơn', 'btn-vien']],
     danggiao: [['dagiao', 'Đã giao', 'btn-xanh'], ['huy', 'Hủy đơn', 'btn-vien']], dagiao: [], huy: [['moi', 'Mở lại', 'btn-vien']], tuchoi: [['moi', 'Mở lại', 'btn-vien']] };
   // Cùng quy tắc với máy chủ: việc với đơn chừa hàng cần quyền "chua", giao hàng cần "don".
-  function quyenTT(d, tt) { return tt === 'giu' || d.tt === 'giu' || (d.loai === 'chua' && ['moi', 'huy', 'tuchoi'].indexOf(d.tt) >= 0) ? 'chua' : 'don'; }
+  function quyenTT(d, tt) {
+    if (tt === 'giu' || d.tt === 'giu' || (d.loai === 'chua' && ['moi', 'huy', 'tuchoi'].indexOf(d.tt) >= 0)) return 'chua';
+    if ((tt === 'danggiao' || tt === 'dagiao') && (d.tt === 'xacnhan' || d.tt === 'danggiao')) return 'giao';
+    return 'don';
+  }
   function nutDon(d) {
     var ds = d.tt === 'moi' && d.loai === 'chua' ? [['giu', 'Duyệt chừa ' + d.soNgay + ' ngày', 'btn-cam'], ['xacnhan', 'Duyệt giao luôn', 'btn-vien'], ['tuchoi', 'Từ chối', 'btn-vien']] : (NUT[d.tt] || []);
     return ds.filter(function (n) { return co(quyenTT(d, n[0])); });
@@ -182,6 +193,7 @@
       '<span>Ngày đặt</span><div>' + gio(d.ngay) + '</div><span>Hình thức</span><div>' + esc(d.hinhThuc) + (d.ngayCan ? ' · cần ngày <b>' + esc(d.ngayCan) + '</b>' : '') + '</div>' +
       (d.diaChi ? '<span>Địa chỉ giao</span><div>' + esc(d.diaChi) + '</div>' : '') + (d.ghiChu ? '<span>Ghi chú khách</span><div>' + esc(d.ghiChu) + '</div>' : '') +
       (d.loai === 'chua' ? '<span>Chừa hàng</span><div><b>' + d.soNgay + ' ngày</b>' + (d.tt === 'giu' && d.han ? ' · giữ tới <b>' + ngayNgan(d.han) + '</b> <span class="qt-chua' + (hetHan(d) ? ' het' : '') + '">(' + conLai(d.han) + ')</span>' : d.tt === 'moi' ? ' · chờ duyệt (hạn tính từ ngày duyệt)' : '') + '</div>' : '') +
+      (d.nguoiGiao ? '<span>Người giao</span><div><b>' + esc(d.nguoiGiao) + '</b></div>' : '') + (d.ngayGiao ? '<span>Đã giao lúc</span><div>' + gio(d.ngayGiao) + '</div>' : '') +
       (d.xuLy ? '<span>Người xử lý</span><div>' + esc(d.xuLy) + (d.capNhat ? ' · ' + gio(d.capNhat) : '') + '</div>' : '') + '</div>' +
       htmlChuaQT(d) +
       '<div class="sec">Mặt hàng</div><table class="qt-ct"><thead><tr><th>Mã / tên</th><th class="so">SL</th><th class="so an-dt">Được bán</th><th class="so">Đơn giá</th><th class="so">Thành tiền</th></tr></thead><tbody>' +
@@ -241,6 +253,8 @@
     if (!d) return;
     var hoi = tt === 'tuchoi' ? 'Từ chối đơn ' : tt === 'huy' ? (d.tt === 'giu' ? 'Nhả hàng (hủy chừa) đơn ' : 'Hủy đơn ') : '';
     if (hoi && !confirm(hoi + d.ma + '?' + (d.daCoc ? '\nLưu ý: đại lý đã cọc ' + tien(d.daCoc) + ' – ghi rõ cách xử lý cọc vào ghi chú nội bộ.' : ''))) return;
+    if (tt === 'danggiao') { var ng = prompt('Người giao / xe (không bắt buộc):', d.nguoiGiao || ''); if (ng === null) return; guiCapNhat({ tt: tt, nguoiGiao: ng }); return; }
+    if (tt === 'dagiao' && !confirm('Xác nhận đơn ' + d.ma + ' ĐÃ GIAO xong?')) return;
     guiCapNhat({ tt: tt });
   }
 
@@ -368,7 +382,7 @@
     if (!laAdmin()) return '<div class="qt-trong">Chỉ quản trị.</div>';
     var ma = Object.keys(TEN_QUYEN);
     var h = '<div class="qt-h1">Nhân viên & quyền <small>bật quyền nào nhân viên làm được việc đó</small></div>' +
-      '<p class="mo qt-ghi">Không bật quyền nào = nhân viên chỉ <b>xem</b> đơn. Thêm / khóa / đổi mật khẩu tài khoản: mở app bảng giá → menu tài khoản → <b>Quản lý tài khoản</b> (vai trò "Nhân viên"). Quyền có hiệu lực ngay, không cần đăng nhập lại.</p>';
+      '<p class="mo qt-ghi">Không bật quyền nào = nhân viên chỉ <b>xem</b> đơn. Quyền <b>Nhập tồn kho</b> cần ghi Gmail của nhân viên – hệ thống tự mở quyền sửa Sheet Tồn kho cho Gmail đó (bỏ quyền thì tự gỡ). Thêm / khóa / đổi mật khẩu tài khoản: mở app bảng giá → menu tài khoản → <b>Quản lý tài khoản</b> (vai trò "Nhân viên"). Quyền có hiệu lực ngay, không cần đăng nhập lại.</p>';
     if (!S.nv) return h + '<div class="qt-khung"><div class="qt-trong">Đang tải…</div></div>';
     if (!S.nv.length) return h + '<div class="qt-khung"><div class="qt-trong">Chưa có tài khoản nhân viên.</div></div>';
     return h + '<div class="qt-khung"><table class="qt-bang qt-quyen"><thead><tr><th>Tài khoản</th>' + ma.map(function (k) { return '<th>' + esc(TEN_QUYEN[k]) + '</th>'; }).join('') + '<th></th></tr></thead><tbody>' +
@@ -376,7 +390,7 @@
         var ad = u.role === 'admin';
         return '<tr><td><b>' + esc(u.ten || u.username) + '</b><br><small>' + esc(u.username) + ' · ' + (ad ? 'Quản trị' : 'Nhân viên') + (u.khoa ? ' · <span class="qt-thieu">đã khóa</span>' : '') + '</small></td>' +
           ma.map(function (k) { return '<td class="qt-o-quyen">' + (ad ? '✔' : '<label><input type="checkbox" data-nv-q="' + esc(u.username) + '" value="' + k + '"' + (u.quyen.indexOf(k) >= 0 ? ' checked' : '') + '><span>' + esc(TEN_QUYEN[k]) + '</span></label>') + '</td>'; }).join('') +
-          '<td>' + (ad ? '<small class="mo">Toàn quyền</small>' : '<button type="button" class="btn btn-chinh btn-nho" data-nv-luu="' + esc(u.username) + '">Lưu</button>') + '</td></tr>';
+          '<td>' + (ad ? '<small class="mo">Toàn quyền</small>' : '<input class="qt-gmail" type="email" data-nv-mail="' + esc(u.username) + '" value="' + esc(u.gmail || '') + '" placeholder="Gmail (để nhập tồn)"><button type="button" class="btn btn-chinh btn-nho" data-nv-luu="' + esc(u.username) + '">Lưu</button>') + '</td></tr>';
       }).join('') + '</tbody></table></div>';
   }
   function taiNhanVien() {
@@ -388,11 +402,102 @@
   function luuQuyen(user, nut) {
     var q = [].slice.call(document.querySelectorAll('[data-nv-q]')).filter(function (x) { return x.getAttribute('data-nv-q') === user && x.checked; }).map(function (x) { return x.value; });
     nut.disabled = true;
-    api('luuQuyen', { username: user, quyen: q.join(',') }, true).then(function (r) {
+    var m = document.querySelector('[data-nv-mail="' + user + '"]');
+    api('luuQuyen', { username: user, quyen: q.join(','), gmail: m ? m.value.trim() : '' }, true).then(function (r) {
       nut.disabled = false;
       if (!r || r.status !== 'ok') throw new Error((r && r.msg) || 'lỗi');
       toast(r.msg); S.nv = null; S.nk.ds = null; taiNhanVien();
     }).catch(function (e) { nut.disabled = false; toast('Không lưu được: ' + e.message); });
+  }
+
+  // ============================================================
+  // KHO & GIAO HÀNG (quyền "giao"): đơn đã duyệt cần xuất kho -> đang giao -> đã giao.
+  // ============================================================
+  function veGiao() {
+    var can = S.don.filter(function (d) { return d.tt === 'xacnhan'; }), dang = S.don.filter(function (d) { return d.tt === 'danggiao'; });
+    var theoNgay = function (a, b) { return String(a.ngayCan || '9999') < String(b.ngayCan || '9999') ? -1 : 1; };
+    can.sort(theoNgay); dang.sort(theoNgay);
+    var homNay = ymd(new Date());
+    var xong = S.don.filter(function (d) { return d.tt === 'dagiao' && d.ngayGiao && ymd(new Date(d.ngayGiao)) === homNay; });
+    return '<div class="qt-h1">Kho & giao hàng <small>đơn đã duyệt – sắp theo ngày khách cần</small>' + NUT_LM + '</div>' +
+      '<div class="qt-the"><div class="qt-so do"><small>Cần xuất kho</small><b>' + can.length + '</b></div><div class="qt-so c"><small>Đang giao</small><b>' + dang.length + '</b></div><div class="qt-so xanh"><small>Đã giao hôm nay</small><b>' + xong.length + '</b></div></div>' +
+      '<div class="qt-khung qt-khung-cam"><h2>📦 Cần xuất kho</h2>' + bangDon(can, 'Không có đơn nào chờ xuất 👍') + '</div>' +
+      '<div class="qt-khung" style="margin-top:16px"><h2>🚚 Đang giao</h2>' + bangDon(dang, 'Không có đơn đang giao') + '</div>' +
+      (co('giao') ? '' : '<p class="mo" style="margin-top:10px">Bạn xem được danh sách; báo Đang giao / Đã giao cần quyền "Kho & giao hàng".</p>');
+  }
+
+  // ============================================================
+  // NHẬP GIÁ (quyền "nhapgia"): sửa giá niêm yết / giá đại lý ngay trên trang, ghi thẳng tab Giá.
+  // ============================================================
+  function taiGia() {
+    api('getAll', {}).then(function (r) {
+      if (!r || r.status !== 'ok') throw new Error((r && r.msg) || 'lỗi');
+      S.gia.ds = r.data || []; if (S.trang === 'gia') ve();
+    }).catch(function (e) { toast('Không tải được bảng giá: ' + e.message); });
+  }
+  function boDau(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase(); }
+  function veGia() {
+    if (!co('nhapgia')) return '<div class="qt-trong">Tài khoản chưa có quyền nhập giá.</div>';
+    return '<div class="qt-h1">Nhập giá <small>sửa xong bấm Lưu – app đại lý thấy giá mới ngay</small></div>' +
+      '<div class="qt-loc"><input id="qt-gia-q" type="search" placeholder="Tìm mã, tên, hãng… (vd: 60x60, inax, L284)" value="' + esc(S.gia.q) + '">' +
+      '<label class="qt-chk"><input type="checkbox" id="qt-gia-trong"' + (S.gia.trong ? ' checked' : '') + '> Chỉ mã chưa có giá</label></div>' +
+      '<div class="qt-khung" id="qt-gia-ds">' + bangGia() + '</div>' +
+      '<p class="mo" style="margin-top:10px">Sửa nhiều mã một lúc (cả nghìn mã) thì vẫn nên nhập thẳng trong tab Giá của Sheet chính.</p>';
+  }
+  function bangGia() {
+    if (!S.gia.ds) return '<div class="qt-trong">Đang tải bảng giá…</div>';
+    var q = boDau(S.gia.q).trim().split(/\s+/).filter(String);
+    var ds = S.gia.ds.filter(function (p) {
+      if (S.gia.trong && p.ny > 0) return false;
+      var s = boDau([p.ma, p.ten, p.tenGoc, p.hang, p.kc, p.nhom].join(' '));
+      return q.every(function (w) { return s.indexOf(w) >= 0; });
+    });
+    if (!ds.length) return '<div class="qt-trong">Không có mã phù hợp</div>';
+    return '<div class="qt-trong-nho">' + ds.length + ' mã' + (ds.length > 60 ? ' – hiện 60 mã đầu, gõ thêm để lọc' : '') + '</div>' +
+      '<table class="qt-bang qt-gia"><thead><tr><th>Mã / tên</th><th class="an-dt">Hãng · ĐVT</th><th class="so">Giá niêm yết</th><th class="so">Giá đại lý</th><th></th></tr></thead><tbody>' +
+      ds.slice(0, 60).map(function (p) {
+        return '<tr><td><b>' + esc(p.ma) + '</b><br><small>' + esc(p.ten) + '</small></td><td class="an-dt"><small>' + esc(p.hang) + ' · ' + esc(p.dvt) + '</small></td>' +
+          '<td class="so"><input class="qt-so-o" inputmode="numeric" data-gia-ny="' + esc(p.ma) + '" value="' + (p.ny ? so(p.ny) : '') + '" placeholder="0"></td>' +
+          '<td class="so"><input class="qt-so-o" inputmode="numeric" data-gia-dl="' + esc(p.ma) + '" value="' + (p.dl ? so(p.dl) : '') + '" placeholder="0"></td>' +
+          '<td><button type="button" class="btn btn-chinh btn-nho" data-gia-luu="' + esc(p.ma) + '">Lưu</button></td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+  function luuGia(ma, nut) {
+    var gt = function (k) { var el = document.querySelector('[data-gia-' + k + '="' + ma + '"]'); return el ? el.value.replace(/[^\d]/g, '') : ''; };
+    var ny = gt('ny'), dl = gt('dl');
+    if (dl && ny && Number(dl) > Number(ny) && !confirm('Giá đại lý cao hơn giá niêm yết – vẫn lưu?')) return;
+    nut.disabled = true;
+    api('suaGia', { ma: ma, ny: ny, dl: dl }, true).then(function (r) {
+      nut.disabled = false;
+      if (!r || r.status !== 'ok') throw new Error((r && r.msg) || 'lỗi');
+      var p = S.gia.ds.filter(function (x) { return x.ma === ma; })[0]; if (p) { if (ny) p.ny = Number(ny); if (dl) p.dl = Number(dl); }
+      nut.textContent = '✓'; setTimeout(function () { nut.textContent = 'Lưu'; }, 1500);
+      toast(r.msg); S.nk.ds = null;
+    }).catch(function (e) { nut.disabled = false; toast('Không lưu được: ' + e.message); });
+  }
+
+  // ============================================================
+  // TỒN KHO (quyền "nhapton"): mở Sheet Tồn kho để dán / nhập, bấm cho app đọc lại ngay.
+  // ============================================================
+  function taiTonTT() {
+    api('thongTinTon', {}).then(function (r) {
+      if (!r || r.status !== 'ok') throw new Error((r && r.msg) || 'lỗi');
+      S.tonTT = r; if (S.trang === 'ton') ve();
+    }).catch(function (e) { toast('Không tải được: ' + e.message); });
+  }
+  function veTon() {
+    if (!co('nhapton')) return '<div class="qt-trong">Tài khoản chưa có quyền nhập tồn kho.</div>';
+    var t = S.tonTT;
+    return '<div class="qt-h1">Tồn kho <small>nhập ở Sheet Tồn kho riêng – app tự đọc</small></div>' +
+      (!t ? '<div class="qt-khung"><div class="qt-trong">Đang tải…</div></div>' :
+        '<div class="qt-khung qt-ton-hd"><h2>Cách nhập tồn</h2><ol>' +
+        '<li>Bấm <b>Mở Sheet Tồn kho</b> (đăng nhập đúng Gmail đã được quản trị ghi trong "Nhân viên & quyền").</li>' +
+        '<li>Xuất file tồn từ phần mềm kho → dán đè vào tab <b>' + esc(t.tab || 'Tồn kho') + '</b> (giữ dòng tiêu đề: Mã vật tư, Tên vật tư, ĐVT, Tồn, Kho…). Hoặc gõ / sửa số trực tiếp.</li>' +
+        '<li>Bấm <b>App đọc lại tồn ngay</b> – đại lý thấy số mới ở lần mở tới (không bấm thì app tự đọc sau tối đa 10 phút).</li></ol>' +
+        '<div class="qt-hd" style="padding:0 16px 16px">' + (t.link ? '<a class="btn btn-chinh" href="' + esc(t.link) + '" target="_blank" rel="noopener">📄 Mở Sheet Tồn kho</a>' : '') +
+        '<button type="button" class="btn btn-vien" data-qt-act="lam-moi-ton">↻ App đọc lại tồn ngay</button></div>' +
+        (t.luc ? '<p class="mo" style="padding:0 16px 14px">' + esc(t.luc) + '</p>' : '') + (t.loi ? '<p class="qt-thieu" style="padding:0 16px 14px">' + esc(t.loi) + '</p>' : '') + '</div>') +
+      '<p class="mo" style="margin-top:10px">Số "Được bán" trên app = Tồn trong Sheet − hàng đang giữ cho đơn (chờ duyệt, chừa, đã xác nhận, đang giao).</p>';
   }
 
   // ---------- Gợi ý khi di chuột vào cột biểu đồ ----------
@@ -408,7 +513,7 @@
 
   // ---------- Bấm ----------
   document.addEventListener('click', function (e) {
-    var el = e.target.closest('[data-qt],[data-qt-loc],[data-don],[data-qt-tt],[data-qt-gh],[data-qt-act],[data-bc-ky],[data-nv-luu]');
+    var el = e.target.closest('[data-qt],[data-qt-loc],[data-don],[data-qt-tt],[data-qt-gh],[data-qt-act],[data-bc-ky],[data-nv-luu],[data-gia-luu]');
     if (!el) { if (e.target.id === 'qt-nen') dongDon(); return; }
     if (el.hasAttribute('data-qt')) { S.trang = el.getAttribute('data-qt'); ve(); return; }
     if (el.hasAttribute('data-qt-loc')) { S.loc = el.getAttribute('data-qt-loc'); S.trang = 'don'; ve(); return; }
@@ -421,6 +526,7 @@
       ve(); return;
     }
     if (el.hasAttribute('data-nv-luu')) { luuQuyen(el.getAttribute('data-nv-luu'), el); return; }
+    if (el.hasAttribute('data-gia-luu')) { luuGia(el.getAttribute('data-gia-luu'), el); return; }
     var a = el.getAttribute('data-qt-act');
     if (a === 'dong') dongDon();
     else if (a === 'in') window.print();
@@ -434,11 +540,13 @@
       S.bc.tu = tu; S.bc.den = den; S.bc.kq = null; ve();
     }
     else if (a === 'xuat-bc') xuatBaoCao();
+    else if (a === 'lam-moi-ton') { el.disabled = true; api('lamMoiTon', {}, true).then(function (r) { el.disabled = false; toast(r && r.status === 'ok' ? r.msg : 'Không làm được: ' + (r && r.msg)); S.ton = null; S.tonTT = null; ve(); }); }
     else if (a === 'dang-xuat') { try { localStorage.removeItem('hn_sess'); } catch (er) { } S.sess = null; hienLogin(); }
   });
   document.addEventListener('input', function (e) {
     if (e.target.id === 'qt-q') { S.q = e.target.value; var k = document.querySelector('.qt-khung'); if (k) k.innerHTML = bangDon(locDon(), 'Không có đơn phù hợp'); }
     if (e.target.id === 'qt-nk-q') { S.nk.q = e.target.value; var n = $('qt-nk-ds'); if (n) n.innerHTML = bangNhatKy(); }
+    if (e.target.id === 'qt-gia-q' || e.target.id === 'qt-gia-trong') { S.gia.q = $('qt-gia-q').value; S.gia.trong = $('qt-gia-trong').checked; var g = $('qt-gia-ds'); if (g) g.innerHTML = bangGia(); }
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('qt-ngan').hidden) dongDon(); });
 
@@ -450,5 +558,5 @@
     veMenu(); ve(); taiDon();
     clearInterval(batDau._t); batDau._t = setInterval(function () { if (!document.hidden) taiDon(true); }, 60000); // tự làm mới mỗi phút
   }
-  if (DEMO) { var sc = document.createElement('script'); sc.src = 'demo-data.js?v=6'; sc.onload = batDau; document.head.appendChild(sc); } else batDau();
+  if (DEMO) { var sc = document.createElement('script'); sc.src = 'demo-data.js?v=7'; sc.onload = batDau; document.head.appendChild(sc); } else batDau();
 })();

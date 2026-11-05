@@ -11,7 +11,7 @@
 var TAB_DON = 'Đơn hàng', TAB_CT = 'Chi tiết đơn', TAB_CAI_CHUA = 'Cài đặt chừa hàng';
 var TD_DON = ['Mã đơn', 'Ngày đặt', 'Trạng thái', 'Tài khoản', 'Đại lý / cửa hàng', 'SĐT', 'Hình thức', 'Địa chỉ giao', 'Ngày cần hàng',
   'Ghi chú khách', 'Số mặt hàng', 'Tổng tiền', 'Người xử lý', 'Cập nhật lúc', 'Ghi chú nội bộ', 'Chi tiết (máy)',
-  'Loại', 'Số ngày chừa', 'Hạn chừa', 'Cọc yêu cầu', 'Đã nhận cọc', 'Xin gia hạn (ngày)'];
+  'Loại', 'Số ngày chừa', 'Hạn chừa', 'Cọc yêu cầu', 'Đã nhận cọc', 'Xin gia hạn (ngày)', 'Người giao', 'Ngày giao'];
 var TD_CT = ['Mã đơn', 'Ngày đặt', 'Tài khoản', 'Mã hàng', 'Tên hàng', 'Số lượng', 'Đơn vị', 'Quy đổi', 'Đơn giá', 'Thành tiền'];
 var TRANG_THAI = { moi: 'Mới – chờ duyệt', giu: 'Đang chừa hàng', xacnhan: 'Đã xác nhận', danggiao: 'Đang giao', dagiao: 'Đã giao', huy: 'Đã hủy', tuchoi: 'Từ chối' };
 var LOAI_CHUA = 'Chừa hàng';
@@ -161,7 +161,7 @@ function docDon(loc, gioiHan) {
     ma: ['Mã đơn'], ngay: ['Ngày đặt'], tt: ['Trạng thái'], user: ['Tài khoản'], ten: ['Đại lý / cửa hàng'], sdt: ['SĐT'], ht: ['Hình thức'],
     dc: ['Địa chỉ giao'], can: ['Ngày cần hàng'], gc: ['Ghi chú khách'], so: ['Số mặt hàng'], tong: ['Tổng tiền'], xl: ['Người xử lý'],
     cn: ['Cập nhật lúc'], nb: ['Ghi chú nội bộ'], ct: ['Chi tiết (máy)'],
-    loai: ['Loại'], sn: ['Số ngày chừa'], han: ['Hạn chừa'], coc: ['Cọc yêu cầu'], dacoc: ['Đã nhận cọc'], xin: ['Xin gia hạn (ngày)']
+    loai: ['Loại'], sn: ['Số ngày chừa'], han: ['Hạn chừa'], coc: ['Cọc yêu cầu'], dacoc: ['Đã nhận cọc'], xin: ['Xin gia hạn (ngày)'], ng: ['Người giao'], ngg: ['Ngày giao']
   });
   var maTT = {}; Object.keys(TRANG_THAI).forEach(function (k) { maTT[TRANG_THAI[k]] = k; });
   var iso = function (v) { return v instanceof Date ? v.toISOString() : chu(v); };
@@ -179,7 +179,7 @@ function docDon(loc, gioiHan) {
       ghiChu: chu(o('gc')), tong: Number(o('tong')) || 0, xuLy: chu(o('xl')), capNhat: iso(o('cn')),
       ghiChuNB: loc.noiBo ? chu(o('nb')) : '', items: items,
       loai: chu(o('loai')) === LOAI_CHUA ? 'chua' : '', soNgay: Number(o('sn')) || 0, han: iso(o('han')),
-      coc: Number(o('coc')) || 0, daCoc: Number(o('dacoc')) || 0, xinGH: Number(o('xin')) || 0, _dong: i + 1 });
+      coc: Number(o('coc')) || 0, daCoc: Number(o('dacoc')) || 0, xinGH: Number(o('xin')) || 0, nguoiGiao: chu(o('ng')), ngayGiao: iso(o('ngg')), _dong: i + 1 });
   }
   return ds;
 }
@@ -204,11 +204,18 @@ function dsDon(p, ti) {
 // Cập nhật đơn.
 //  Đại lý: chỉ tự hủy đơn của mình khi còn "Mới".
 //  Quản trị: mọi việc. Nhân viên: theo quyền (QUYEN trong Quyen.js):
-//    don    – đổi trạng thái đơn thường (xác nhận / giao / hủy / từ chối)
+//    don    – duyệt đơn thường (xác nhận / từ chối / hủy / mở lại)
+//    giao   – kho & giao hàng: Đã xác nhận → Đang giao → Đã giao (ghi người giao)
 //    chua   – duyệt chừa ('giu'), gia hạn, từ chối xin gia hạn, nhả / chuyển đơn đang chừa
 //    coc    – sửa "Cọc yêu cầu" / "Đã nhận cọc"
 //    ghichu – sửa ghi chú nội bộ
 //  Trường gửi lên mà KHÔNG đổi giá trị thì bỏ qua (không cần quyền).
+// Việc đổi trạng thái cần quyền nào (trang quản trị dùng đúng quy tắc này để ẩn / hiện nút).
+function quyenDoiTT(d, tt) {
+  if (tt === 'giu' || d.tt === 'giu' || (d.loai === 'chua' && ['moi', 'huy', 'tuchoi'].indexOf(d.tt) >= 0)) return 'chua';
+  if ((tt === 'danggiao' || tt === 'dagiao') && (d.tt === 'xacnhan' || d.tt === 'danggiao')) return 'giao';
+  return 'don';
+}
 function capNhatDon(p, ti) {
   var tt = String(p.tt || '');
   if (tt && !TRANG_THAI[tt]) return { status: 'error', msg: 'Trạng thái không hợp lệ.' };
@@ -228,7 +235,7 @@ function capNhatDon(p, ti) {
     var doiNB = p.ghiChuNB !== undefined && chu(p.ghiChuNB).slice(0, 500) !== d.ghiChuNB;
     // Kiểm quyền trước khi ghi bất cứ gì.
     // Duyệt / từ chối / mở lại / nhả đơn chừa hàng cần quyền 'chua'; giao hàng cần quyền 'don'.
-    var qTT = tt === 'giu' || d.tt === 'giu' || (d.loai === 'chua' && ['moi', 'huy', 'tuchoi'].indexOf(d.tt) >= 0) ? 'chua' : 'don';
+    var qTT = quyenDoiTT(d, tt);
     if (doiTT && !co(qTT)) return cam(qTT);
     if ((n > 0 || p.boXin) && !co('chua')) return cam('chua');
     if (doiCoc && !co('coc')) return cam('coc');
@@ -247,6 +254,8 @@ function capNhatDon(p, ti) {
         msg.push('giữ tới ' + Utilities.formatDate(han, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy')); nk.push('giữ ' + soNgay + ' ngày tới ' + Utilities.formatDate(han, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy'));
         try { damBaoNhacChua(); } catch (e) { }
       }
+      if (tt === 'danggiao' && chu(p.nguoiGiao)) { ghi('Người giao', chu(p.nguoiGiao).slice(0, 100)); nk.push('người giao: ' + chu(p.nguoiGiao).slice(0, 100)); }
+      if (tt === 'dagiao') ghi('Ngày giao', new Date());
     }
     if (n > 0) {
       var tu = d.han && new Date(d.han).getTime() > Date.now() ? new Date(d.han) : new Date();
@@ -263,6 +272,7 @@ function capNhatDon(p, ti) {
   } finally { lock.releaseLock(); }
   demXoa('giu');
   ghiNhatKy(ti, noiBo ? 'Cập nhật đơn' : 'Đại lý tự hủy đơn', d.ma, nk.join(' · '));
+  if (doiTT && tt === 'xacnhan') try { baoKho(d); } catch (e) { Logger.log('Báo kho lỗi: ' + e); }
   return { status: 'ok', msg: 'Đơn ' + p.ma + (msg.length ? ': ' + msg.join(', ') : ': đã lưu') };
 }
 
@@ -337,17 +347,32 @@ function nhacChuaHang() {
   baoQuanTri(tieuDe, tieuDe + '\n\n' + dong.join('\n') + '\n\nMở trang quản trị: ' + WEB_APP_PAGE + 'quan-tri.html');
 }
 
-// ---------- Báo đơn: Email + Telegram ----------
+// ---------- Báo đơn: Email + Telegram (nhóm chat) ----------
+// 2 nơi nhận:  "chinh" – đơn mới, chừa hàng, xin gia hạn, nhắc hạn (chủ DN / bán hàng)
+//              "kho"   – đơn ĐÃ DUYỆT cần xuất kho đi giao (nhóm kho & giao hàng)
+// Cài trên Sheet: menu 📱 App → "Cài email nhận báo đơn" / "Cài Telegram (nhóm chat)".
 function tienVN(n) { return Number(n || 0).toLocaleString('vi-VN') + 'đ'; }
-function baoQuanTri(tieuDe, noiDung, html) {
-  var email = typeof EMAIL_BAO_DON === 'string' ? EMAIL_BAO_DON : '';
+function emailNhan(noi) {
+  var pr = PropertiesService.getScriptProperties();
+  var v = pr.getProperty(noi === 'kho' ? 'EMAIL_KHO' : 'EMAIL_BAO_DON');
+  if (v === null && noi !== 'kho') v = typeof EMAIL_BAO_DON === 'string' ? EMAIL_BAO_DON : '';
+  return String(v || '').split(/[\s,;]+/).filter(function (x) { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x); }).join(',');
+}
+function baoQuanTri(tieuDe, noiDung, html, noi) {
+  var email = emailNhan(noi);
   if (email) MailApp.sendEmail({ to: email, subject: tieuDe, body: noiDung, htmlBody: html || noiDung.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\n/g, '<br>'), name: 'App Hiển Nga' });
-  guiTelegram(noiDung);
+  guiTelegram(noiDung, noi);
+}
+function htmlBangHang(don) {
+  var e = function (x) { return String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;'); };
+  return '<table border="1" cellpadding="6" style="border-collapse:collapse"><tr style="background:#E3F2FD"><th>Mã</th><th>Tên</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr>' +
+    don.items.map(function (d) { return '<tr><td>' + e(d.ma) + '</td><td>' + e(d.ten) + '</td><td>' + d.sl + ' ' + e(d.dv) + (d.qd ? '<br><small>' + e(d.qd) + '</small>' : '') + '</td><td align="right">' + tienVN(d.dongia) + '</td><td align="right">' + tienVN(d.tien) + '</td></tr>'; }).join('') +
+    '<tr><td colspan="4" align="right"><b>Tổng</b></td><td align="right"><b>' + tienVN(don.tong) + '</b></td></tr></table>';
 }
 function baoDonMoi(don) {
   var link = WEB_APP_PAGE + 'quan-tri.html#don=' + encodeURIComponent(don.ma);
   var chua = don.loai === 'chua';
-  var dongCT = don.items.map(function (d) { return d.ma + ' – ' + d.sl + ' ' + d.dv + (d.qd ? ' (' + d.qd + ')' : '') + ' × ' + tienVN(d.dongia) + ' = ' + tienVN(d.tien); });
+  var dongCT = don.items.map(function (d) { return '• ' + d.ma + ' – ' + d.sl + ' ' + d.dv + (d.qd ? ' (' + d.qd + ')' : '') + ' × ' + tienVN(d.dongia) + ' = ' + tienVN(d.tien); });
   var tieuDe = (chua ? '🔒 Yêu cầu CHỪA HÀNG ' + don.soNgay + ' ngày ' : '🛒 Đơn mới ') + don.ma + ' – ' + don.ten + ' – ' + tienVN(don.tong);
   var dau = [tieuDe, 'Hình thức: ' + don.hinhThuc + (don.ngayCan ? ' · cần ngày ' + don.ngayCan : '')];
   if (chua) dau.push('Chừa ' + don.soNgay + ' ngày' + (don.coc ? ' · cọc yêu cầu ' + tienVN(don.coc) : ' · không cần cọc'));
@@ -356,44 +381,88 @@ function baoDonMoi(don) {
   if (don.ghiChu) dau.push('Ghi chú: ' + don.ghiChu);
   var noiDung = dau.join('\n') + '\n\n' + dongCT.join('\n') + '\n\nDuyệt đơn: ' + link;
   var e = function (x) { return String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;'); };
-  var html = '<div style="font:14px Arial"><h2 style="color:' + (chua ? '#B45309' : '#0140FF') + '">' + e(tieuDe) + '</h2><p>' + dau.slice(1).map(e).join('<br>') +
-    '</p><table border="1" cellpadding="6" style="border-collapse:collapse"><tr style="background:#E3F2FD"><th>Mã</th><th>Tên</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr>' +
-    don.items.map(function (d) { return '<tr><td>' + e(d.ma) + '</td><td>' + e(d.ten) + '</td><td>' + d.sl + ' ' + e(d.dv) + (d.qd ? '<br><small>' + e(d.qd) + '</small>' : '') + '</td><td align="right">' + tienVN(d.dongia) + '</td><td align="right">' + tienVN(d.tien) + '</td></tr>'; }).join('') +
-    '<tr><td colspan="4" align="right"><b>Tổng</b></td><td align="right"><b>' + tienVN(don.tong) + '</b></td></tr></table>' +
+  var html = '<div style="font:14px Arial"><h2 style="color:' + (chua ? '#B45309' : '#0140FF') + '">' + e(tieuDe) + '</h2><p>' + dau.slice(1).map(e).join('<br>') + '</p>' + htmlBangHang(don) +
     '<p><a href="' + link + '" style="background:#0140FF;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Mở trang quản trị để duyệt</a></p></div>';
-  baoQuanTri(tieuDe, noiDung, html);
+  baoQuanTri(tieuDe, noiDung, html, 'chinh');
 }
-function guiTelegram(text) {
-  var pr = PropertiesService.getScriptProperties(), tk = pr.getProperty('TELEGRAM_TOKEN'), chat = pr.getProperty('TELEGRAM_CHAT');
+// Đơn vừa được duyệt (Đã xác nhận) -> báo nhóm kho chuẩn bị xuất hàng.
+function baoKho(d) {
+  if (!emailNhan('kho') && !PropertiesService.getScriptProperties().getProperty('TELEGRAM_CHAT_KHO')) return;
+  var link = WEB_APP_PAGE + 'quan-tri.html#don=' + encodeURIComponent(d.ma);
+  var tieuDe = '🚚 Cần xuất kho ' + d.ma + ' – ' + d.ten + (d.ngayCan ? ' – cần ngày ' + d.ngayCan : '');
+  var dau = [tieuDe, d.hinhThuc + (d.diaChi ? ' · ' + d.diaChi : '') + (d.sdt ? ' · SĐT ' + d.sdt : '')];
+  if (d.ghiChu) dau.push('Ghi chú khách: ' + d.ghiChu);
+  var noiDung = dau.join('\n') + '\n\n' + d.items.map(function (x) { return '• ' + x.ma + ' – ' + x.sl + ' ' + x.dv + (x.qd ? ' (' + x.qd + ')' : ''); }).join('\n') + '\n\nMở đơn / báo đã giao: ' + link;
+  baoQuanTri(tieuDe, noiDung, null, 'kho');
+}
+function guiTelegram(text, noi) {
+  var pr = PropertiesService.getScriptProperties(), tk = pr.getProperty('TELEGRAM_TOKEN');
+  var khoa = noi === 'kho' ? 'TELEGRAM_CHAT_KHO' : 'TELEGRAM_CHAT', chat = pr.getProperty(khoa);
   if (!tk || !chat) return false;
-  var r = UrlFetchApp.fetch('https://api.telegram.org/bot' + tk + '/sendMessage', {
-    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-    payload: JSON.stringify({ chat_id: chat, text: String(text).slice(0, 3900), disable_web_page_preview: true })
-  });
-  return r.getResponseCode() === 200;
+  var gui = function (id) {
+    return UrlFetchApp.fetch('https://api.telegram.org/bot' + tk + '/sendMessage', {
+      method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      payload: JSON.stringify({ chat_id: id, text: String(text).slice(0, 3900), disable_web_page_preview: true })
+    });
+  };
+  var r = gui(chat);
+  if (r.getResponseCode() === 200) return true;
+  // Nhóm thường được Telegram nâng lên "siêu nhóm" -> đổi Chat ID: tự cập nhật rồi gửi lại.
+  try {
+    var moi = ((JSON.parse(r.getContentText() || '{}').parameters) || {}).migrate_to_chat_id;
+    if (moi) { pr.setProperty(khoa, String(moi)); return gui(String(moi)).getResponseCode() === 200; }
+  } catch (e) { }
+  return false;
 }
 
 // ---------- Cài đặt báo đơn (menu trên Sheet) ----------
-function caiTelegram() {
-  var ui = SpreadsheetApp.getUi();
-  var a = ui.prompt('Telegram – bước 1/2', 'Dán mã bot (token) do @BotFather cấp, dạng 123456:ABC…', ui.ButtonSet.OK_CANCEL);
+function caiEmail() {
+  var ui = SpreadsheetApp.getUi(), pr = PropertiesService.getScriptProperties();
+  var a = ui.prompt('Email nhận báo đơn (1/2)', 'Email nhận ĐƠN MỚI / chừa hàng / nhắc hạn. Nhiều email cách nhau dấu phẩy.\nHiện tại: ' + (emailNhan('chinh') || '(chưa có)') + '\nĐể trống = giữ nguyên.', ui.ButtonSet.OK_CANCEL);
   if (a.getSelectedButton() !== ui.Button.OK) return;
-  var tk = a.getResponseText().trim();
-  var b = ui.prompt('Telegram – bước 2/2', 'Nhắn 1 tin bất kỳ cho bot trên Telegram trước, rồi bấm OK (để trống ô này).\nHoặc dán sẵn Chat ID nếu đã biết.', ui.ButtonSet.OK_CANCEL);
-  if (b.getSelectedButton() !== ui.Button.OK) return;
-  var chat = b.getResponseText().trim();
-  if (!chat) {
-    var res = JSON.parse(UrlFetchApp.fetch('https://api.telegram.org/bot' + tk + '/getUpdates', { muteHttpExceptions: true }).getContentText() || '{}');
-    var u = (res.result || []).slice(-1)[0];
-    chat = u && (u.message || u.channel_post || {}).chat ? String((u.message || u.channel_post).chat.id) : '';
+  if (a.getResponseText().trim()) pr.setProperty('EMAIL_BAO_DON', a.getResponseText().trim());
+  var b = ui.prompt('Email nhóm kho (2/2)', 'Email kho & giao hàng – nhận ĐƠN ĐÃ DUYỆT cần xuất giao. Nhiều email cách nhau dấu phẩy.\nHiện tại: ' + (emailNhan('kho') || '(chưa có)') + '\nĐể trống = giữ nguyên, gõ "xoa" = bỏ.', ui.ButtonSet.OK_CANCEL);
+  if (b.getSelectedButton() === ui.Button.OK && b.getResponseText().trim()) {
+    var v = b.getResponseText().trim();
+    if (norm(v) === 'xoa') pr.deleteProperty('EMAIL_KHO'); else pr.setProperty('EMAIL_KHO', v);
   }
-  if (!chat) { ui.alert('Chưa lấy được Chat ID – hãy nhắn 1 tin cho bot rồi chạy lại.'); return; }
-  var pr = PropertiesService.getScriptProperties();
-  pr.setProperty('TELEGRAM_TOKEN', tk); pr.setProperty('TELEGRAM_CHAT', chat);
-  ui.alert(guiTelegram('✅ App Hiển Nga đã nối Telegram – đơn mới sẽ báo vào đây.') ? 'Đã nối Telegram, kiểm tra tin nhắn thử.' : 'Không gửi được – kiểm tra lại mã bot.');
+  ui.alert('Đã lưu.\nĐơn mới → ' + (emailNhan('chinh') || '(không)') + '\nKho → ' + (emailNhan('kho') || '(không)'));
+}
+// Nối Telegram vào NHÓM CHAT: thêm bot vào nhóm, gõ /start trong nhóm, rồi chạy mục này.
+function caiTelegram() {
+  var ui = SpreadsheetApp.getUi(), pr = PropertiesService.getScriptProperties();
+  var cu = pr.getProperty('TELEGRAM_TOKEN');
+  var a = ui.prompt('Telegram – bước 1/3: mã bot', 'Dán mã bot (token) do @BotFather cấp, dạng 123456:ABC…' + (cu ? '\nĐã có mã bot – để trống = dùng mã cũ.' : ''), ui.ButtonSet.OK_CANCEL);
+  if (a.getSelectedButton() !== ui.Button.OK) return;
+  var tk = a.getResponseText().trim() || cu;
+  if (!tk) { ui.alert('Chưa có mã bot.'); return; }
+  var b = ui.prompt('Telegram – bước 2/3: nhóm nào?', 'Gõ 1 = NHÓM CHÍNH (đơn mới, chừa hàng, nhắc hạn)\nGõ 2 = NHÓM KHO (đơn đã duyệt cần xuất giao)', ui.ButtonSet.OK_CANCEL);
+  if (b.getSelectedButton() !== ui.Button.OK) return;
+  var kho = b.getResponseText().trim() === '2';
+  var c = ui.alert('Telegram – bước 3/3', 'Trên Telegram:\n1. Thêm bot vào nhóm chat ' + (kho ? 'KHO' : 'CHÍNH') + '.\n2. Trong nhóm gõ: /start\n3. Quay lại đây bấm OK.', ui.ButtonSet.OK_CANCEL);
+  if (c !== ui.Button.OK) return;
+  var res = {};
+  try { res = JSON.parse(UrlFetchApp.fetch('https://api.telegram.org/bot' + tk + '/getUpdates', { muteHttpExceptions: true }).getContentText() || '{}'); } catch (e) { }
+  if (!res.ok) { ui.alert('Mã bot không đúng – kiểm tra lại với @BotFather.'); return; }
+  // Tìm nhóm gần nhất bot thấy (tin nhắn /start hoặc lúc được thêm vào nhóm).
+  var nhom = null, rieng = null;
+  (res.result || []).forEach(function (u) {
+    var m = u.message || u.channel_post || u.my_chat_member || u.edited_message, ch = m && m.chat;
+    if (!ch) return;
+    if (ch.type === 'group' || ch.type === 'supergroup') nhom = ch; else if (ch.type === 'private') rieng = ch;
+  });
+  var chon = nhom || rieng;
+  if (!chon) { ui.alert('Chưa thấy nhóm nào. Kiểm tra: bot đã ở trong nhóm chưa, đã gõ /start trong nhóm chưa, rồi chạy lại.'); return; }
+  var ten = chon.title || [chon.first_name, chon.last_name].filter(String).join(' ');
+  if (ui.alert('Xác nhận', 'Gửi báo ' + (kho ? 'KHO' : 'ĐƠN MỚI') + ' vào: "' + ten + '"' + (nhom ? ' (nhóm)' : ' (chat riêng – chưa thấy nhóm)') + '?', ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
+  pr.setProperty('TELEGRAM_TOKEN', tk);
+  pr.setProperty(kho ? 'TELEGRAM_CHAT_KHO' : 'TELEGRAM_CHAT', String(chon.id));
+  var ok = guiTelegram('✅ App Hiển Nga đã nối nhóm này – ' + (kho ? 'đơn ĐÃ DUYỆT cần xuất kho đi giao' : 'đơn mới, chừa hàng, nhắc hạn') + ' sẽ báo vào đây.', kho ? 'kho' : 'chinh');
+  ui.alert(ok ? 'Đã nối "' + ten + '". Kiểm tra tin nhắn thử trong nhóm.' : 'Không gửi được – bot có bị chặn gửi tin trong nhóm không?');
 }
 function thuBaoDon() {
-  baoDonMoi({ ma: 'THU-000', ten: 'Đơn thử', sdt: '0900000000', hinhThuc: 'Giao tận nơi', diaChi: 'Địa chỉ thử', ngayCan: '', ghiChu: 'Đây là tin thử', tong: 1000000,
-    items: [{ ma: 'GHT.BC6600T', ten: 'Gạch thử', sl: 2, dv: 'thùng', qd: '2.88 m²', dongia: 347222, tien: 1000000 }] });
-  SpreadsheetApp.getUi().alert('Đã gửi báo đơn thử tới ' + (typeof EMAIL_BAO_DON === 'string' ? EMAIL_BAO_DON : '(chưa cài email)') + ' và Telegram (nếu đã nối).');
+  var mau = { ma: 'THU-000', ten: 'Đơn thử', sdt: '0900000000', hinhThuc: 'Giao tận nơi', diaChi: 'Địa chỉ thử', ngayCan: '', ghiChu: 'Đây là tin thử', tong: 1000000,
+    items: [{ ma: 'GHT.BC6600T', ten: 'Gạch thử', sl: 2, dv: 'thùng', qd: '2.88 m²', dongia: 347222, tien: 1000000 }] };
+  baoDonMoi(mau); baoKho(mau);
+  SpreadsheetApp.getUi().alert('Đã gửi thử.\nĐơn mới → ' + (emailNhan('chinh') || '(chưa có email)') + ' + Telegram nhóm chính (nếu đã nối)\nKho → ' + (emailNhan('kho') || '(chưa có email)') + ' + Telegram nhóm kho (nếu đã nối)');
 }

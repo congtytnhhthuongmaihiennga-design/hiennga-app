@@ -8,7 +8,7 @@
 <title>Quản trị đơn hàng – Hiển Nga</title>
 <link rel="icon" type="image/png" href="img/favicon.png">
 <link rel="stylesheet" href="style.css?v=13">
-<link rel="stylesheet" href="quan-tri.css?v=6">
+<link rel="stylesheet" href="quan-tri.css?v=7">
 </head>
 <body class="qt">
 
@@ -35,6 +35,9 @@
     <div class="qt-brand"><span class="logo"><img src="img/logo-mark.png" alt=""></span><b>Quản trị</b></div>
     <button type="button" class="qt-mi on" data-qt="tong">▦ Bảng điều khiển</button>
     <button type="button" class="qt-mi" data-qt="don">🛒 Đơn hàng <span class="qt-badge" id="qt-badge" hidden></span></button>
+    <button type="button" class="qt-mi" data-qt="giao" id="qt-m-giao" hidden>🚚 Kho & giao hàng <span class="qt-badge" id="qt-badge-giao" hidden></span></button>
+    <button type="button" class="qt-mi" data-qt="gia" id="qt-m-gia" hidden>🏷 Nhập giá</button>
+    <button type="button" class="qt-mi" data-qt="ton" id="qt-m-ton" hidden>📦 Tồn kho</button>
     <button type="button" class="qt-mi" data-qt="baocao" id="qt-m-bc" hidden>📊 Báo cáo</button>
     <button type="button" class="qt-mi" data-qt="nhatky" id="qt-m-nk" hidden>📜 Nhật ký</button>
     <button type="button" class="qt-mi" data-qt="nhanvien" id="qt-m-nv" hidden>👥 Nhân viên & quyền</button>
@@ -52,6 +55,6 @@
 <div class="toast" id="toast" hidden></div>
 
 <script src="config.js?v=7"></script>
-<script src="quan-tri.js?v=3"></script>
+<script src="quan-tri.js?v=4"></script>
 </body>
 </html>

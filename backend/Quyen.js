@@ -4,10 +4,13 @@
 // (quản trị bật/tắt trên trang quản trị → "Nhân viên & quyền"). Không có quyền nào = chỉ xem đơn.
 // ============================================================
 var QUYEN = {
-  don: 'Duyệt đơn & đổi trạng thái giao hàng',
+  don: 'Duyệt đơn (xác nhận / từ chối / hủy)',
+  giao: 'Kho & giao hàng (xuất kho, đang giao, đã giao)',
   chua: 'Duyệt chừa hàng / gia hạn / nhả hàng',
   coc: 'Ghi tiền cọc',
   ghichu: 'Ghi chú nội bộ',
+  nhapgia: 'Nhập / sửa giá',
+  nhapton: 'Nhập tồn kho (mở quyền sửa Sheet Tồn kho)',
   baocao: 'Xem báo cáo doanh số',
   nhatky: 'Xem nhật ký thao tác'
 };
@@ -26,7 +29,7 @@ function dsTaiKhoan() {
   for (var i = 1; i < u.rows.length; i++) {
     var r = u.rows[i], user = chu(r[u.c.user]).toLowerCase();
     if (!user) continue;
-    ds[user] = { role: vaiTro(r[u.c.role]), quyen: u.c.quyen === undefined ? [] : tachQuyen(r[u.c.quyen]) };
+    ds[user] = { role: vaiTro(r[u.c.role]), quyen: u.c.quyen === undefined ? [] : tachQuyen(r[u.c.quyen]), gmail: u.c.gmail === undefined ? '' : chu(r[u.c.gmail]).toLowerCase() };
   }
   c.put('ds_tk', JSON.stringify(ds), 3600);
   return ds;
@@ -40,24 +43,39 @@ function quyenCua(role, user) {
 function coQuyen(ti, q) { return !!ti && (ti.role === 'admin' || (ti.role === 'nv' && quyenCua('nv', ti.user).indexOf(q) >= 0)); }
 
 // Quản trị bật/tắt quyền cho 1 nhân viên.
+// p.gmail: tài khoản Google của nhân viên – có quyền "nhapton" thì được mở quyền SỬA Sheet Tồn kho.
 function luuQuyen(p, ti) {
   var user = chu(p.username).toLowerCase(), q = tachQuyen(Array.isArray(p.quyen) ? p.quyen.join(',') : p.quyen);
+  var gmail = chu(p.gmail).toLowerCase();
+  if (gmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(gmail)) return { status: 'error', msg: 'Gmail không hợp lệ.' };
   var u = tabUsers();
   if (u.c.quyen === undefined) return { status: 'error', msg: 'Tab Users chưa có cột "Quyền".' };
   for (var i = 1; i < u.rows.length; i++) {
     if (chu(u.rows[i][u.c.user]).toLowerCase() !== user) continue;
     if (vaiTro(u.rows[i][u.c.role]) !== 'nv') return { status: 'error', msg: 'Chỉ đặt quyền cho tài khoản nhân viên (nv).' };
+    var cuQ = tachQuyen(u.rows[i][u.c.quyen]), cuMail = u.c.gmail === undefined ? '' : chu(u.rows[i][u.c.gmail]).toLowerCase();
     u.sh.getRange(i + 1, u.c.quyen + 1).setValue(q.join(', '));
+    if (u.c.gmail !== undefined) u.sh.getRange(i + 1, u.c.gmail + 1).setValue(gmail);
     xoaDemTaiKhoan();
-    ghiNhatKy(ti, 'Đổi quyền nhân viên', '', user + ': ' + (q.length ? q.map(function (k) { return QUYEN[k]; }).join('; ') : 'chỉ xem'));
-    return { status: 'ok', msg: 'Đã lưu quyền cho ' + user };
+    var them = [];
+    // Đồng bộ quyền sửa Sheet Tồn kho theo quyền "nhapton".
+    if (SHEET_TON_RIENG()) {
+      try {
+        var ss = ssTon(), coCu = cuQ.indexOf('nhapton') >= 0 && cuMail, coMoi = q.indexOf('nhapton') >= 0 && gmail;
+        if (coCu && (!coMoi || cuMail !== gmail)) { ss.removeEditor(cuMail); them.push('đã gỡ quyền sửa Sheet Tồn kho của ' + cuMail); }
+        if (coMoi && (!coCu || cuMail !== gmail)) { ss.addEditor(gmail); them.push('đã mở quyền sửa Sheet Tồn kho cho ' + gmail); }
+        if (q.indexOf('nhapton') >= 0 && !gmail) them.push('chưa nhập Gmail nên chưa mở được Sheet Tồn kho');
+      } catch (e) { them.push('lỗi chia sẻ Sheet Tồn kho: ' + e.message); }
+    }
+    ghiNhatKy(ti, 'Đổi quyền nhân viên', '', user + ': ' + (q.length ? q.map(function (k) { return QUYEN[k]; }).join('; ') : 'chỉ xem') + (them.length ? ' · ' + them.join(' · ') : ''));
+    return { status: 'ok', msg: 'Đã lưu quyền cho ' + user + (them.length ? ' – ' + them.join(', ') : '') };
   }
   return { status: 'error', msg: 'Không thấy tài khoản ' + user };
 }
 function dsNhanVien() {
   var ds = listUsers().data.filter(function (x) { return x.role === 'nv' || x.role === 'admin'; });
   var tk = dsTaiKhoan();
-  ds.forEach(function (x) { x.quyen = x.role === 'admin' ? Object.keys(QUYEN) : ((tk[x.username.toLowerCase()] || {}).quyen || []); });
+  ds.forEach(function (x) { var t = tk[x.username.toLowerCase()] || {}; x.quyen = x.role === 'admin' ? Object.keys(QUYEN) : (t.quyen || []); x.gmail = t.gmail || ''; });
   return { status: 'ok', data: ds, tenQuyen: QUYEN };
 }
 
@@ -130,3 +148,38 @@ function baoCao(p) {
   kq.nhom = sx(kq.nhom, 'tien');
   return { status: 'ok', tu: tu, den: den, data: kq };
 }
+
+// ---------- Nhập / sửa giá (quyền "nhapgia") – ghi thẳng vào tab Giá, nhân viên không cần mở Sheet chính ----------
+function suaGia(p, ti) {
+  var ma = chu(p.ma);
+  if (!ma) return { status: 'error', msg: 'Thiếu mã hàng.' };
+  var sh = layTab(TAB.gia, true), rows = sh.getDataRange().getValues();
+  var hi = timDongTieuDe(rows, COT_GIA.ma);
+  if (hi < 0) return { status: 'error', msg: 'Tab Giá không có cột Mã hàng.' };
+  var c = timCot(rows[hi], COT_GIA), doi = [];
+  for (var i = hi + 1; i < rows.length; i++) {
+    if (chu(rows[i][c.ma]) !== ma) continue;
+    [['ny', 'Giá niêm yết'], ['dl', 'Giá đại lý']].forEach(function (k) {
+      var v = p[k[0]];
+      if (v === undefined || v === '' || v === null || c[k[0]] === undefined) return;
+      var moi = Math.max(0, Math.round(Number(String(v).replace(/[^\d]/g, '')) || 0)), cu = soTien(rows[i][c[k[0]]]);
+      if (moi === cu) return;
+      sh.getRange(i + 1, c[k[0]] + 1).setValue(moi);
+      doi.push(k[1] + ' ' + tienVN(cu) + ' → ' + tienVN(moi));
+    });
+    if (!doi.length) return { status: 'ok', msg: 'Không có gì thay đổi' };
+    demXoa('gia');
+    PropertiesService.getScriptProperties().setProperty('CAP_NHAT_GIA', new Date().toISOString());
+    ghiNhatKy(ti, 'Sửa giá', '', ma + ': ' + doi.join(' · '));
+    return { status: 'ok', msg: 'Đã lưu giá ' + ma };
+  }
+  return { status: 'error', msg: 'Không thấy mã ' + ma + ' trong tab Giá.' };
+}
+// ---------- Tồn kho (quyền "nhapton") ----------
+function thongTinTon() {
+  var kq = { status: 'ok', link: '', tab: '', luc: '' };
+  try { var ss = ssTon(); kq.link = ss.getUrl(); var sh = layTabTon(false); kq.tab = sh ? sh.getName() + ' (' + Math.max(0, sh.getLastRow() - 1) + ' dòng)' : ''; } catch (e) { kq.loi = e.message; }
+  try { var hd = ssTon().getSheetByName(TAB_HUONG_DAN_TON); if (hd) kq.luc = chu(hd.getRange(2, 2).getValue()); } catch (e) { }
+  return kq;
+}
+function lamMoiTon(ti) { demXoa('tonkho'); demXoa('giu'); ghiNhatKy(ti, 'Làm mới tồn kho', '', ''); return { status: 'ok', msg: 'App sẽ đọc tồn kho mới ở lần tải tới' }; }

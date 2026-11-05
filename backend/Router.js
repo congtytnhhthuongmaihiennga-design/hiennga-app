@@ -54,6 +54,9 @@ function xuLy(p) {
       case 'luuQuyen':   return laAdmin ? luuQuyen(p, ti) : cam;
       case 'nhatKy':     return ti && (ti.role === 'admin' || ti.role === 'nv') && (p.maDon || coQuyen(ti, 'nhatky')) ? nhatKy(p) : cam;
       case 'baoCao':     return coQuyen(ti, 'baocao') ? baoCao(p) : cam;
+      case 'suaGia':     return coQuyen(ti, 'nhapgia') ? suaGia(p, ti) : cam;
+      case 'thongTinTon': return coQuyen(ti, 'nhapton') ? thongTinTon() : cam;
+      case 'lamMoiTon':  return coQuyen(ti, 'nhapton') ? lamMoiTon(ti) : cam;
     }
     return { status: 'error', msg: 'Unknown action: ' + a };
   } catch (err) {

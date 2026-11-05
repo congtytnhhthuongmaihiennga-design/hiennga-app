@@ -11,7 +11,8 @@ function onOpen() {
     .addItem('Kiểm tra dữ liệu', 'kiemTraDuLieu')
     .addSeparator()
     .addItem('Gửi thử báo đơn (Email + Telegram)', 'thuBaoDon')
-    .addItem('Cài Telegram báo đơn', 'caiTelegram')
+    .addItem('Cài email nhận báo đơn (chính + kho)', 'caiEmail')
+    .addItem('Cài Telegram báo đơn (nhóm chat chính / kho)', 'caiTelegram')
     .addItem('Bật nhắc chừa hàng hết hạn (7h sáng)', 'caiNhacChua')
     .addToUi();
 }

@@ -10,14 +10,15 @@ function tabUsers() {
   var rows = sh.getDataRange().getValues();
   var c = timCot(rows[0] || [], {
     user: ['Username'], ten: ['Họ tên', 'Name'], role: ['Vai trò', 'Role'], moi: ['Mật khẩu mới'],
-    hash: ['PasswordHash'], cty: ['Tên công ty'], sdt: ['SĐT'], dc: ['Địa chỉ'], khoa: ['Khóa'], quyen: ['Quyền']
+    hash: ['PasswordHash'], cty: ['Tên công ty'], sdt: ['SĐT'], dc: ['Địa chỉ'], khoa: ['Khóa'], quyen: ['Quyền'], gmail: ['Gmail', 'Email Google']
   });
   // GĐ3: thêm cột "Quyền" (quyền nhân viên) nếu tab cũ chưa có.
-  if (c.quyen === undefined && c.user !== undefined && rows.length) {
+  [['quyen', 'Quyền'], ['gmail', 'Gmail']].forEach(function (k) {
+    if (c[k[0]] !== undefined || c.user === undefined || !rows.length) return;
     var cot = rows[0].filter(function (x) { return chu(x); }).length;
-    sh.getRange(1, cot + 1).setValue('Quyền').setFontWeight('bold');
-    c.quyen = cot;
-  }
+    sh.getRange(1, cot + 1).setValue(k[1]).setFontWeight('bold');
+    rows[0][cot] = k[1]; c[k[0]] = cot;
+  });
   if (c.user === undefined || c.hash === undefined || c.role === undefined) {
     throw new Error('Tab "' + TAB.users + '" thiếu cột Username / Vai trò / PasswordHash.');
   }

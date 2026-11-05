@@ -53,7 +53,8 @@
   function sao(o) { return JSON.parse(JSON.stringify(o)); }
   function tre(v) { return new Promise(function (ok) { setTimeout(function () { ok(v); }, 350); }); }
 
-  var TEN_QUYEN = { don: 'Duyệt đơn & đổi trạng thái giao hàng', chua: 'Duyệt chừa hàng / gia hạn / nhả hàng', coc: 'Ghi tiền cọc', ghichu: 'Ghi chú nội bộ', baocao: 'Xem báo cáo doanh số', nhatky: 'Xem nhật ký thao tác' };
+  var TEN_QUYEN = { don: 'Duyệt đơn (xác nhận / từ chối / hủy)', giao: 'Kho & giao hàng (xuất kho, đang giao, đã giao)', chua: 'Duyệt chừa hàng / gia hạn / nhả hàng', coc: 'Ghi tiền cọc', ghichu: 'Ghi chú nội bộ', nhapgia: 'Nhập / sửa giá', nhapton: 'Nhập tồn kho (mở quyền sửa Sheet Tồn kho)', baocao: 'Xem báo cáo doanh số', nhatky: 'Xem nhật ký thao tác' };
+  var gmailNV = {};
   var quyenNV = { nv: [] };
   function quyenCua(s) { return !s ? [] : s.role === 'admin' ? Object.keys(TEN_QUYEN) : s.role === 'nv' ? (quyenNV[s.username] || []) : []; }
   function coQ(s, q) { return quyenCua(s).indexOf(q) >= 0; }
@@ -126,7 +127,9 @@
       if (!dd) return tre({ status: 'error', msg: 'Không thấy đơn' });
       var noiBo = sess.role === 'admin' || sess.role === 'nv';
       if (!noiBo && !(dd.user === sess.username && p.tt === 'huy' && dd.tt === 'moi')) return tre({ status: 'error', msg: 'forbidden' });
-      var qTT = p.tt === 'giu' || dd.tt === 'giu' || (dd.loai === 'chua' && ['moi', 'huy', 'tuchoi'].indexOf(dd.tt) >= 0) ? 'chua' : 'don';
+      var qTT = p.tt === 'giu' || dd.tt === 'giu' || (dd.loai === 'chua' && ['moi', 'huy', 'tuchoi'].indexOf(dd.tt) >= 0) ? 'chua' : ((p.tt === 'danggiao' || p.tt === 'dagiao') && (dd.tt === 'xacnhan' || dd.tt === 'danggiao')) ? 'giao' : 'don';
+      if (p.tt === 'danggiao' && p.nguoiGiao) dd.nguoiGiao = p.nguoiGiao;
+      if (p.tt === 'dagiao') dd.ngayGiao = new Date().toISOString();
       var can = function (q) { return tre({ status: 'error', msg: 'Tài khoản chưa có quyền: ' + TEN_QUYEN[q] }); };
       if (noiBo && p.tt && p.tt !== dd.tt && !coQ(sess, qTT)) return can(qTT);
       if (noiBo && (p.giaHan || p.boXin) && !coQ(sess, 'chua')) return can('chua');
@@ -154,14 +157,23 @@
     }
     if (action === 'dsNhanVien') {
       if (!sess || sess.role !== 'admin') return tre({ status: 'error', msg: 'forbidden' });
-      return tre({ status: 'ok', tenQuyen: TEN_QUYEN, data: users.filter(function (u) { return u.role !== 'khachhang'; }).map(function (u) { var x = sao(u); x.quyen = quyenCua({ role: u.role, username: u.username }); return x; }) });
+      return tre({ status: 'ok', tenQuyen: TEN_QUYEN, data: users.filter(function (u) { return u.role !== 'khachhang'; }).map(function (u) { var x = sao(u); x.quyen = quyenCua({ role: u.role, username: u.username }); x.gmail = gmailNV[u.username] || ''; return x; }) });
     }
     if (action === 'luuQuyen') {
       if (!sess || sess.role !== 'admin') return tre({ status: 'error', msg: 'forbidden' });
-      quyenNV[p.username] = String(p.quyen || '').split(',').filter(function (k) { return TEN_QUYEN[k]; });
+      quyenNV[p.username] = String(p.quyen || '').split(',').filter(function (k) { return TEN_QUYEN[k]; }); gmailNV[p.username] = p.gmail || '';
       ghiNK(sess, 'Đổi quyền nhân viên', '', p.username + ': ' + (quyenNV[p.username].join(', ') || 'chỉ xem'));
       return tre({ status: 'ok', msg: 'Đã lưu quyền cho ' + p.username + ' (thử)' });
     }
+    if (action === 'suaGia') {
+      if (!coQ(sess, 'nhapgia')) return tre({ status: 'error', msg: 'forbidden' });
+      var gg = data.filter(function (x) { return x.ma === p.ma; })[0]; if (!gg) return tre({ status: 'error', msg: 'Không thấy mã ' + p.ma });
+      if (p.ny) gg.ny = Number(p.ny); if (p.dl) gg.dl = Number(p.dl);
+      ghiNK(sess, 'Sửa giá', '', p.ma + ': NY ' + gg.ny + ' · ĐL ' + gg.dl);
+      return tre({ status: 'ok', msg: 'Đã lưu giá ' + p.ma + ' (thử)' });
+    }
+    if (action === 'thongTinTon') return tre(coQ(sess, 'nhapton') ? { status: 'ok', link: 'https://docs.google.com/spreadsheets/', tab: 'TỒN TỔNG HỢP (thử)', luc: '✅ App đã đọc (dữ liệu thử)' } : { status: 'error', msg: 'forbidden' });
+    if (action === 'lamMoiTon') return tre(coQ(sess, 'nhapton') ? { status: 'ok', msg: 'App sẽ đọc tồn kho mới ở lần tải tới (thử)' } : { status: 'error', msg: 'forbidden' });
     if (action === 'baoCao') {
       if (!coQ(sess, 'baocao')) return tre({ status: 'error', msg: 'forbidden' });
       var nhomCua = {}; data.forEach(function (g) { nhomCua[g.ma] = g.nhom; });
