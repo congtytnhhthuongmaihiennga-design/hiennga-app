@@ -30,7 +30,7 @@ function docGia() {
 }
 
 function docAnh() {
-  var sh = layTab(TAB.anh, false);
+  var sh = layTabAnh();
   if (!sh) return { status: 'ok', data: {} };
   var rows = sh.getDataRange().getValues();
   var hi = timDongTieuDe(rows, COT_GIA.ma);
@@ -145,9 +145,15 @@ function getAll(ti) {
   if (gia.status !== 'ok') return gia;
   // Chưa đăng nhập: máy chủ KHÔNG gửi giá đại lý xuống trình duyệt.
   if (!ti) gia.data.forEach(function (p) { p.dl = 0; });
-  var anh = quaDem('anh', docAnh, TAB.anh);
+  var anh = {};
+  try {
+    // Ghép ảnh theo mã không phân biệt hoa/thường (tên file ảnh hay gõ chữ thường).
+    var goc = quaDem('anh', docAnh, layTabAnh, CACHE_GIAY_TON).data || {}, theoHoa = {};
+    Object.keys(goc).forEach(function (m) { theoHoa[m.toUpperCase()] = goc[m]; });
+    gia.data.forEach(function (p) { var a = theoHoa[p.ma.toUpperCase()]; if (a) anh[p.ma] = a; });
+  } catch (e) { } // lỗi ảnh không được làm hỏng bảng giá
   var capNhat = PropertiesService.getScriptProperties().getProperty('CAP_NHAT_GIA') || '';
-  return { status: 'ok', data: gia.data, anh: anh.data || {}, luc: gia.luc, capNhat: capNhat, daDangNhap: !!ti };
+  return { status: 'ok', data: gia.data, anh: anh, luc: gia.luc, capNhat: capNhat, daDangNhap: !!ti };
 }
 
 function getTonKho(ti) {

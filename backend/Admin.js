@@ -95,7 +95,7 @@ function xoaDemCoBao() {
 function warmCache() {
   xoaDem();
   quaDem('gia', docGia, TAB.gia);
-  quaDem('anh', docAnh, TAB.anh);
+  try { quaDem('anh', docAnh, layTabAnh, CACHE_GIAY_TON); } catch (e) { }
   try { quaDem('tonkho', docTonKho, function () { return layTabTon(false); }, CACHE_GIAY_TON); } catch (e) { }
 }
 

@@ -231,11 +231,13 @@
 
   // ---------- Ảnh ----------
   function anhCua(ma) { return S.anh[ma] || []; }
+  // Ảnh Drive: danh sách lấy bản nhỏ (nhanh, đỡ tốn 3G), chi tiết lấy bản lớn cho nét.
+  function coAnh(u, rong) { return /drive\.google\.com\/thumbnail/.test(u) ? u.replace(/([?&])sz=w\d+/, '$1sz=w' + rong) : u; }
   function iconNhom(p) { return nhomTheoKey(p._nhom).icon || 'khac'; }
   function oAnh(p, cls, idx, kemHang) {
     var a = anhCua(p.ma)[idx || 0];
     return '<div class="anh-o ' + (cls || '') + '">' +
-      (a ? '<img class="anh" loading="lazy" alt="" src="' + esc(a) + '" data-icon="' + iconNhom(p) + '">' : ic(iconNhom(p))) +
+      (a ? '<img class="anh" loading="lazy" alt="" src="' + esc(coAnh(a, 320)) + '" data-icon="' + iconNhom(p) + '">' : ic(iconNhom(p))) +
       (kemHang && p.hang ? '<span class="tag-hang">' + esc(p.hang) + '</span>' : '') + '</div>';
   }
   // Ảnh lỗi (Drive chưa chia sẻ công khai, link sai) -> hiện biểu tượng thay vì khung trắng.
@@ -505,7 +507,7 @@
     if (!giuAnh) { S.anhIdx = 0; ghiGanDay(p.ma); }
     var anh = anhCua(p.ma), g = nhomTheoKey(p._nhom);
     var html = dauSheet(esc(g.ten)) + '<div class="sh-body">';
-    html += '<div class="anh-o anh-lon' + (anh.length ? '' : ' chua-anh') + '">' + (anh.length ? '<img class="anh" alt="" src="' + esc(anh[S.anhIdx] || anh[0]) + '" data-icon="' + iconNhom(p) + '">' : ic(iconNhom(p))) +
+    html += '<div class="anh-o anh-lon' + (anh.length ? '' : ' chua-anh') + '">' + (anh.length ? '<img class="anh" alt="" src="' + esc(coAnh(anh[S.anhIdx] || anh[0], 1200)) + '" data-icon="' + iconNhom(p) + '">' : ic(iconNhom(p))) +
       (anh.length > 1 ? '<button type="button" class="anh-nav trai" data-anh="-1" aria-label="Ảnh trước">' + ic('chevL') + '</button><button type="button" class="anh-nav phai" data-anh="1" aria-label="Ảnh sau">' + ic('chevR') + '</button><span class="anh-so">' + (S.anhIdx + 1) + '/' + anh.length + '</span>' : '') + '</div>';
     html += '<h2 class="ct-ten">' + esc(p._ten) + '</h2>' +
       '<button type="button" class="ct-ma" data-act="chep-ma" data-ma="' + esc(p.ma) + '" title="Chép mã">Mã SP: <b>' + esc(p.ma) + '</b>' + ic('copy', 'ic-sm') + '</button>' +

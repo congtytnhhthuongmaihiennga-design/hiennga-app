@@ -32,7 +32,9 @@ function xuLy(p) {
         var tenTab = function (ss) { return ss.getSheets().map(function (s) { return s.getName() + ' (' + s.getLastRow() + 'x' + s.getLastColumn() + ')'; }); };
         var ton;
         try { ton = SHEET_TON_RIENG() ? tenTab(ssTon()) : 'dùng tab trong Sheet chính'; } catch (e) { ton = 'LỖI: ' + e.message; }
-        return { status: 'ok', role: ti ? ti.role : '', tabs: tenTab(SpreadsheetApp.getActiveSpreadsheet()), tonKho: ton };
+        var anh;
+        try { anh = typeof SHEET_ANH_ID === 'string' && SHEET_ANH_ID ? tenTab(SpreadsheetApp.openById(SHEET_ANH_ID)) : 'dùng tab trong Sheet chính'; } catch (e) { anh = 'LỖI: ' + e.message; }
+        return { status: 'ok', role: ti ? ti.role : '', tabs: tenTab(SpreadsheetApp.getActiveSpreadsheet()), tonKho: ton, anh: anh };
       case 'getAll':    return getAll(ti);
       case 'getTonKho': return ti ? getTonKho(ti) : { status: 'error', msg: 'need_login' };
       case 'login':     return login(p);

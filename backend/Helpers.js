@@ -109,6 +109,21 @@ function quaDem(khoa, tinh, tab, giay) {
   return JSON.parse(JSON.stringify(v));
 }
 
+// ---------- Sheet ảnh riêng ("Hình ảnh sản phẩm") ----------
+// Tab "Ảnh", hoặc tab đầu tiên có cột mã. Không có Sheet riêng thì dùng tab "Ảnh" của Sheet chính.
+function layTabAnh() {
+  var id = typeof SHEET_ANH_ID === 'string' ? SHEET_ANH_ID : '';
+  if (!id) return layTab(TAB.anh, false);
+  var ss = SpreadsheetApp.openById(id), sh = ss.getSheetByName(TAB.anh);
+  if (sh) return sh;
+  var ds = ss.getSheets();
+  for (var j = 0; j < ds.length; j++) {
+    var s = ds[j], n = Math.min(s.getLastRow(), 10), m = Math.min(s.getLastColumn(), 20);
+    if (n > 0 && m > 0 && timDongTieuDe(s.getRange(1, 1, n, m).getValues(), COT_GIA.ma) >= 0) return s;
+  }
+  return null;
+}
+
 // ---------- Sheet tồn kho riêng ----------
 function ssTon() {
   var id = typeof SHEET_TON_KHO_ID === 'string' ? SHEET_TON_KHO_ID : '';

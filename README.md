@@ -19,6 +19,15 @@ App bảng giá + tồn kho cho **Công ty TNHH Thương mại Hiển Nga** – 
 `Giá`, `Tồn kho`, `Kho`, `Nối mã`, `Ảnh`, `Users`. Cột đọc **theo tên tiêu đề** (danh sách tên chấp nhận ở `backend/Config.js`), chèn/đổi thứ tự cột vẫn chạy.
 Menu **📱 App** trên Sheet: khởi tạo tab, bật tự làm mới 15 phút, xóa bộ nhớ đệm, kiểm tra dữ liệu.
 
+## 3 Google Sheet
+| Sheet | Ai sửa | Nội dung |
+|---|---|---|
+| Sheet chính (gắn `backend/`) | Quản lý | Giá, Users, Kho, Nối mã |
+| Sheet Tồn kho | Người nhập kho | Dán / nhập file thẻ kho (tab có cột Mã vật tư + Tồn) |
+| Sheet Hình ảnh sản phẩm (gắn `anh-script/`) | Người lo ảnh | Menu 📷 Ảnh SP: quét thư mục Drive, tên file = mã vật tư |
+
+Mã 2 Sheet phụ nằm trong `backend/Rieng.js` (không đưa lên GitHub).
+
 ## Xem thử trên máy
 `config.js` để trống `APPS_URL` (hoặc thêm `?demo=1` vào địa chỉ) → chạy **dữ liệu giả** (`demo-data.js`).
 Đăng nhập thử: `admin`, `nv` hoặc `daily`, mật khẩu bất kỳ.
