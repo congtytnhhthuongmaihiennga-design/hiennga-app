@@ -9,6 +9,9 @@ function onOpen() {
     .addSeparator()
     .addItem('Xóa bộ nhớ đệm (app lấy dữ liệu mới ngay)', 'xoaDemCoBao')
     .addItem('Kiểm tra dữ liệu', 'kiemTraDuLieu')
+    .addSeparator()
+    .addItem('Gửi thử báo đơn (Email + Telegram)', 'thuBaoDon')
+    .addItem('Cài Telegram báo đơn', 'caiTelegram')
     .addToUi();
 }
 

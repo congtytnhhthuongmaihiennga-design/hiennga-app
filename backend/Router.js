@@ -42,6 +42,11 @@ function xuLy(p) {
       case 'listUsers': return laAdmin ? listUsers() : cam;
       case 'luuUser':   return laAdmin ? luuUser(p) : cam;
       case 'clearCache': if (!laAdmin) return cam; xoaDem(); return { status: 'ok' };
+      // Đơn hàng (GĐ1)
+      case 'taoDon':     return ti ? taoDon(p, ti) : { status: 'error', msg: 'need_login' };
+      case 'donCuaToi':  return ti ? donCuaToi(ti) : { status: 'error', msg: 'need_login' };
+      case 'dsDon':      return ti && (ti.role === 'admin' || ti.role === 'nv') ? dsDon(p) : cam;
+      case 'capNhatDon': return ti ? capNhatDon(p, ti) : { status: 'error', msg: 'need_login' };
     }
     return { status: 'error', msg: 'Unknown action: ' + a };
   } catch (err) {

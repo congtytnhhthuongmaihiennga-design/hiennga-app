@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="theme-color" content="#0140FF"/>
+<meta name="robots" content="noindex"/>
+<title>Quản trị đơn hàng – Hiển Nga</title>
+<link rel="icon" type="image/png" href="img/favicon.png">
+<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="quan-tri.css?v=3">
+</head>
+<body class="qt">
+
+<!-- Đăng nhập (chỉ quản trị / nhân viên) -->
+<div id="qt-login" class="login" hidden>
+  <div class="login-head">
+    <div class="logo logo-lg"><img src="img/logo.png" alt=""></div>
+    <div class="login-ten">Quản trị đơn hàng</div>
+    <div class="login-sub" id="qt-ten-cty"></div>
+  </div>
+  <form class="login-box" id="qt-form">
+    <h1>Đăng nhập quản trị</h1>
+    <p class="login-note">Dành cho tài khoản Quản trị / Nhân viên.</p>
+    <label>Tài khoản<input id="qt-user" autocomplete="username" autocapitalize="none" required></label>
+    <label>Mật khẩu<input id="qt-pass" type="password" autocomplete="current-password" required></label>
+    <p class="login-err" id="qt-err"></p>
+    <button type="submit" class="btn btn-chinh" id="qt-nut">Đăng nhập</button>
+    <p class="login-foot"><a href="./">← Về app bảng giá</a></p>
+  </form>
+</div>
+
+<div id="qt-app" class="qt-app" hidden>
+  <aside class="qt-menu">
+    <div class="qt-brand"><span class="logo"><img src="img/logo-mark.png" alt=""></span><b>Quản trị</b></div>
+    <button type="button" class="qt-mi on" data-qt="tong">▦ Bảng điều khiển</button>
+    <button type="button" class="qt-mi" data-qt="don">🛒 Đơn hàng <span class="qt-badge" id="qt-badge" hidden></span></button>
+    <div class="qt-menu-cuoi">
+      <a class="qt-mi" href="./">📱 Mở app bảng giá</a>
+      <div class="qt-ai" id="qt-ai"></div>
+      <button type="button" class="qt-mi" data-qt-act="dang-xuat">🚪 Đăng xuất</button>
+    </div>
+  </aside>
+  <main class="qt-main" id="qt-main"></main>
+</div>
+
+<div class="qt-nen" id="qt-nen" hidden></div>
+<section class="qt-ngan" id="qt-ngan" hidden></section>
+<div class="toast" id="toast" hidden></div>
+
+<script src="config.js?v=7"></script>
+<script src="quan-tri.js?v=1"></script>
+</body>
+</html>

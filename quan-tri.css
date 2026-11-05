@@ -1,0 +1,67 @@
+/* Trang quản trị đơn hàng – dùng chung biến màu của style.css */
+body.qt{background:var(--bg)}
+.qt-app{display:flex;min-height:100vh}
+.qt-menu{width:230px;flex-shrink:0;background:var(--c2);color:#fff;display:flex;flex-direction:column;padding:16px 12px;position:sticky;top:0;height:100vh}
+.qt-brand{display:flex;align-items:center;gap:10px;padding:4px 8px 18px;font-size:18px}
+.qt-mi{display:flex;align-items:center;gap:8px;width:100%;padding:11px 12px;border-radius:10px;color:#fff;font-size:14.5px;font-weight:600;opacity:.85;text-align:left}
+.qt-mi:hover{background:rgba(255,255,255,.1);opacity:1}
+.qt-mi.on{background:rgba(255,255,255,.18);opacity:1}
+.qt-badge{margin-left:auto;background:var(--do);border-radius:999px;padding:1px 8px;font-size:12px}
+.qt-menu-cuoi{margin-top:auto}
+.qt-ai{font-size:12px;opacity:.8;padding:10px 12px}
+.qt-main{flex:1;min-width:0;padding:22px 26px 60px;max-width:1400px}
+.qt-h1{font-size:22px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.qt-h1 small{font-size:13px;font-weight:500;color:var(--t2)}
+.qt-the{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:22px}
+.qt-so{background:var(--bg1);border:1px solid var(--bd);border-radius:14px;padding:14px 16px;text-align:left}
+.qt-so small{display:block;color:var(--t2);font-size:12.5px}
+.qt-so b{display:block;font-size:26px;margin-top:4px}
+.qt-so.do b{color:var(--do)}.qt-so.xanh b{color:var(--xanh)}.qt-so.c b{color:var(--c)}
+.qt-khung{background:var(--bg1);border:1px solid var(--bd);border-radius:14px;overflow:hidden}
+.qt-khung h2{font-size:15px;padding:12px 16px;border-bottom:1px solid var(--bd)}
+.qt-loc{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.qt-loc input{flex:1;min-width:220px;padding:9px 12px;border:1.5px solid var(--bd2);border-radius:10px;background:var(--bg1);font-size:15px}
+table.qt-bang{width:100%;border-collapse:collapse;font-size:13.5px}
+.qt-bang th{text-align:left;font-size:12px;color:var(--t2);font-weight:700;padding:10px 12px;background:var(--bg2);border-bottom:1px solid var(--bd)}
+.qt-bang td{padding:11px 12px;border-bottom:1px solid var(--bd);vertical-align:top}
+.qt-bang tr.dong:hover td{background:var(--c-nhat);cursor:pointer}
+.qt-bang .so{text-align:right;white-space:nowrap;font-weight:700}
+.qt-bang .ma{font-family:ui-monospace,Consolas,monospace;font-weight:700}
+.qt-bang small{color:var(--t2)}
+.qt-trong{padding:40px;text-align:center;color:var(--t2)}
+/* Ngăn chi tiết đơn (trượt từ phải) */
+.qt-nen{position:fixed;inset:0;background:rgba(10,15,30,.45);z-index:40}
+.qt-ngan{position:fixed;top:0;right:0;bottom:0;width:min(620px,100%);background:var(--bg1);z-index:41;overflow-y:auto;box-shadow:-10px 0 30px rgba(0,0,0,.2);display:flex;flex-direction:column}
+.qt-ngan .sh-body{flex:1}
+.qt-tt-ds{display:grid;grid-template-columns:120px 1fr;gap:6px 12px;font-size:14px}
+.qt-tt-ds span{color:var(--t2)}
+.qt-ct{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:6px}
+.qt-ct th,.qt-ct td{border-bottom:1px solid var(--bd);padding:8px 6px;text-align:left}
+.qt-ct .so{text-align:right;white-space:nowrap}
+.qt-ct tfoot td{font-weight:800;font-size:15px;border-bottom:none}
+.qt-nb{width:100%;min-height:70px;padding:10px;border:1.5px solid var(--bd2);border-radius:10px;font:inherit;font-size:15px;background:var(--bg1);color:var(--t1)}
+.qt-hd{display:flex;flex-wrap:wrap;gap:8px}
+.qt-hd .btn{width:auto;flex:1;min-width:120px}
+.btn-xanh{background:var(--xanh);color:#fff}
+@media(max-width:820px){
+  .qt-app{display:block}
+  .qt-menu{width:auto;height:auto;position:static;flex-direction:row;flex-wrap:wrap;padding:8px}
+  .qt-brand{padding:4px 8px}
+  .qt-mi{width:auto}
+  .qt-menu-cuoi{margin:0;display:flex}
+  .qt-ai{display:none}
+  .qt-main{padding:14px}
+  .qt-bang .an-dt{display:none}
+  .qt-h1{flex-wrap:wrap;font-size:19px}
+  .qt-the{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .qt-so b{font-size:20px;overflow-wrap:anywhere}
+  .qt-khung{overflow-x:auto}
+  .qt-bang td,.qt-bang th{padding:9px 8px}
+  .qt-mi{padding:8px 10px;font-size:13.5px}
+  .qt-tt-ds{grid-template-columns:96px 1fr}
+}
+@media print{
+  body.qt>*:not(#qt-ngan){display:none!important}
+  .qt-ngan{position:static;width:auto;box-shadow:none}
+  .qt-ngan .sh-head button,.qt-ngan .sh-foot,.qt-ngan .khong-in{display:none!important}
+}

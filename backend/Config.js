@@ -6,6 +6,8 @@
 // (tự sinh lần đầu), nên file này đưa lên GitHub public vẫn an toàn.
 // ============================================================
 var APP_KEY = 'aMaqlb4vNcw0G6oqMEgK5ULv2z8S';
+// Địa chỉ trang web app (link trong email / Telegram báo đơn).
+var WEB_APP_PAGE = 'https://congtytnhhthuongmaihiennga-design.github.io/hiennga-app/';
 
 // Tên tab trong Google Sheet. KHÔNG đổi tên tab trên Sheet.
 var TAB = {

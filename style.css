@@ -288,6 +288,23 @@ s.ny{font-size:12px;color:var(--t3);margin-left:6px}
 .chip-kt.on{background:var(--do);border-color:var(--do);color:#fff}
 @media(min-width:900px){.kt-bar .chips{flex-wrap:wrap}}
 
+/* ---------- Giỏ hàng + đơn hàng ---------- */
+.tb-gio{position:relative}
+.tb-dem{position:absolute;top:2px;right:2px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--do);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.gio-tt{color:var(--c)!important;font-weight:700}
+.gio-o{width:54px;text-align:center;padding:6px 4px;border:1.5px solid var(--bd2);border-radius:8px;background:var(--bg1);font-size:16px;font-weight:700}
+.gio-dv{font-size:11.5px;color:var(--t2);width:34px;flex-shrink:0}
+.gio-tong{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;font-size:14px}
+.gio-tong b{font-size:20px;color:var(--c)}
+.don-the{border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.don-dau{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.don-hang{font-size:12.5px;color:var(--t2);margin-top:6px;line-height:1.5}
+.don-cuoi{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.don-cuoi b{color:var(--c);font-size:16px}
+.tt{font-size:11.5px;font-weight:800;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.tt-moi{background:#FFF4DE;color:#9A5B00}.tt-xacnhan{background:#E3F2FD;color:#1565C0}.tt-danggiao{background:#EDE7F6;color:#5E35B1}
+.tt-dagiao{background:#E7F5EC;color:#1F7A3A}.tt-huy,.tt-tuchoi{background:#F1F3F4;color:#6B7280}
+
 /* ---------- Giỏ tem ---------- */
 .tem-hd{background:var(--c-nhat);border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.5}
 .tem-hd summary{font-weight:800;color:var(--c);cursor:pointer}

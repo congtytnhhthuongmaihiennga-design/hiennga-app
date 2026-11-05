@@ -81,6 +81,39 @@
       if (cu) users[users.indexOf(cu)] = moi; else users.push(moi);
       return tre({ status: 'ok', msg: (cu ? 'Đã cập nhật ' : 'Đã tạo ') + p.username + ' (thử, không lưu thật)' });
     }
+    // Đơn hàng (giả, chỉ trong bộ nhớ)
+    if (action === 'taoDon') {
+      if (!sess) return tre({ status: 'error', msg: 'need_login' });
+      var tong = 0, its = (p.items || []).map(function (x) {
+        var g = data.filter(function (d) { return d.ma === x.ma; })[0], qd = String(g.dg).match(/([\d.]+) m²/), m2 = g.dvt === 'm²' && qd ? Number(qd[1]) : 0;
+        var dg = g.dl || g.ny, luong = m2 ? x.sl * m2 : x.sl, t = Math.round(luong * dg); tong += t;
+        return { ma: g.ma, ten: g.ten, sl: x.sl, dv: m2 ? 'thùng' : g.dvt, qd: m2 ? (Math.round(luong * 100) / 100) + ' m²' : '', dongia: dg, tien: t };
+      });
+      var ma = 'HN261105-' + ('00' + (donDemo.length + 1)).slice(-3);
+      donDemo.unshift({ ma: ma, ngay: new Date().toISOString(), tt: 'moi', user: sess.username, ten: p.tenKH, sdt: p.sdt, hinhThuc: p.hinhThuc === 'nhan' ? 'Nhận tại kho' : 'Giao tận nơi',
+        diaChi: p.diaChi, ngayCan: p.ngayCan, ghiChu: p.ghiChu, tong: tong, items: its, xuLy: '', ghiChuNB: '' });
+      return tre({ status: 'ok', ma: ma, tong: tong });
+    }
+    if (action === 'donCuaToi') return tre({ status: 'ok', data: sao(donDemo.filter(function (d) { return d.user === (sess && sess.username); })) });
+    if (action === 'dsDon') {
+      if (!sess || (sess.role !== 'admin' && sess.role !== 'nv')) return tre({ status: 'error', msg: 'forbidden' });
+      var dem = { moi: 0, xacnhan: 0, danggiao: 0, dagiao: 0, huy: 0, tuchoi: 0 };
+      donDemo.forEach(function (d) { dem[d.tt]++; });
+      return tre({ status: 'ok', data: sao(donDemo.filter(function (d) { return !p.tt || d.tt === p.tt; })), dem: dem });
+    }
+    if (action === 'capNhatDon') {
+      var dd = donDemo.filter(function (d) { return d.ma === p.ma; })[0];
+      if (!dd) return tre({ status: 'error', msg: 'Không thấy đơn' });
+      if (sess.role !== 'admin' && !(dd.user === sess.username && p.tt === 'huy' && dd.tt === 'moi')) return tre({ status: 'error', msg: 'forbidden' });
+      dd.tt = p.tt; dd.xuLy = sess.username; if (p.ghiChuNB !== undefined) dd.ghiChuNB = p.ghiChuNB;
+      return tre({ status: 'ok', msg: 'Đã cập nhật' });
+    }
     return tre({ status: 'ok' });
   };
+  var donDemo = [
+    { ma: 'HN261104-007', ngay: '2026-11-04T09:12:00+07:00', tt: 'moi', user: 'daily', ten: 'Cửa hàng VLXD Minh Phát', sdt: '0909123456', hinhThuc: 'Giao tận nơi', diaChi: '12 Trần Hưng Đạo, Long Xuyên',
+      ngayCan: '2026-11-08', ghiChu: 'Giao buổi sáng', tong: 9216000, items: [{ ma: 'GM600600003', ten: 'Gạch mẫu trơn 3', sl: 32, dv: 'thùng', qd: '46.08 m²', dongia: 200000, tien: 9216000 }], xuLy: '', ghiChuNB: '' },
+    { ma: 'HN261103-004', ngay: '2026-11-03T15:40:00+07:00', tt: 'dagiao', user: 'daily2', ten: 'VLXD Hòa Bình', sdt: '0911222333', hinhThuc: 'Nhận tại kho', diaChi: '', ngayCan: '',
+      ghiChu: '', tong: 3500000, items: [{ ma: 'VS001', ten: 'Bồn cầu một khối mẫu 1', sl: 1, dv: 'bộ', qd: '', dongia: 3500000, tien: 3500000 }], xuLy: 'admin', ghiChuNB: 'Đã thu tiền' }
+  ];
 })();
