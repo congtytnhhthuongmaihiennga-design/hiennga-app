@@ -66,7 +66,7 @@
         var d = t[m], c = function (n) { return Math.min(n, 51); };
         t[m] = { tong: c(d.tong), dvt: d.dvt, tier: { nhanh: c(d.tier.nhanh), mai: c(d.tier.mai), cho: c(d.tier.cho) } };
       });
-      return tre({ status: 'ok', data: t });
+      return tre({ status: 'ok', data: t, luc: new Date().toISOString() });
     }
     if (action === 'login') {
       var u = String(p.username || '').toLowerCase();
