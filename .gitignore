@@ -12,3 +12,7 @@ backend/Rieng.js
 
 # Video huong dan (file lon, gui rieng)
 *.mp4
+
+# File thu / tai lieu gui rieng
+huong-dan/*.pdf
+huong-dan/QR thu*.png
