@@ -55,8 +55,70 @@ function docAnh(giaData) {
   return { status: 'ok', data: data };
 }
 
+// Tab "Hướng dẫn" ngay kế bên tab Ảnh + cột "Xem trước ảnh" (dán link là thấy ảnh nhỏ, biết link đúng/sai).
+var HUONG_DAN_ANH = [
+  ['CÁCH ĐƯA HÌNH ẢNH SẢN PHẨM LÊN APP HIỂN NGA'],
+  [''],
+  ['Tab "Ảnh" đã có sẵn Mã sản phẩm + Tên sản phẩm (tự lấy từ bảng giá). Chỉ cần dán link ảnh vào cột C.'],
+  [''],
+  ['BƯỚC 1 – Tải ảnh lên Google Drive (tài khoản Hiển Nga)'],
+  ['   • Điện thoại: mở app Google Drive → nút ＋ → Tải lên → chọn ảnh.'],
+  ['   • Máy tính: vào drive.google.com → kéo thả ảnh vào.'],
+  ['   • Nên để chung 1 thư mục, vd "Ảnh sản phẩm Hiển Nga". Ảnh rõ, nền sáng, dưới 2 MB là đẹp.'],
+  [''],
+  ['BƯỚC 2 – Lấy đường liên kết của ảnh'],
+  ['   • Điện thoại: bấm ⋮ cạnh ảnh → Chia sẻ → Quyền truy cập chung: "Bất kỳ ai có đường liên kết" → Sao chép đường liên kết.'],
+  ['   • Máy tính: chuột phải vào ảnh → Chia sẻ → Chia sẻ → Quyền truy cập chung: "Bất kỳ ai có đường liên kết" → Sao chép đường liên kết.'],
+  ['   • Quên đổi quyền cũng được: bước 4 sẽ tự mở quyền.'],
+  [''],
+  ['BƯỚC 3 – Dán link vào tab "Ảnh"'],
+  ['   • Bấm Ctrl+F (điện thoại: ⋮ → Tìm) gõ mã sản phẩm để tìm đúng dòng.'],
+  ['   • Dán link vào cột C "Link Drive hình ảnh". Có thêm ảnh: dán vào cột D, E (Link ảnh 2, 3).'],
+  ['   • Nhìn cột G "Xem trước ảnh": hiện ảnh nhỏ = link đúng. Hiện "Link sai" hoặc ô trắng mãi = kiểm tra lại link / quyền chia sẻ.'],
+  [''],
+  ['BƯỚC 4 – Bấm menu 📷 Ảnh SP → "Mở quyền xem cho các link ảnh"'],
+  ['   • Lần đầu Google hỏi quyền: Tiếp tục → chọn tài khoản Hiển Nga → Nâng cao → Đi tới… → Cho phép, rồi bấm lại menu lần nữa.'],
+  ['   • Bước này giúp iPhone / máy của đại lý xem được ảnh.'],
+  [''],
+  ['Khoảng 10 phút sau, ảnh tự hiện trên app (danh sách + màn chi tiết sản phẩm).'],
+  [''],
+  ['LƯU Ý'],
+  ['   • KHÔNG sửa / xóa cột A (Mã), B (Tên) – máy chủ tự điền. Mã mới trong bảng giá sẽ tự có thêm dòng.'],
+  ['   • KHÔNG đổi tên tab "Ảnh" và các tiêu đề cột ở dòng 1.'],
+  ['   • Xóa link ở cột C = gỡ ảnh khỏi app.'],
+  ['   • Dán link ảnh trên web (không phải Drive) cũng được, miễn link mở ra là ảnh.']
+];
+function damBaoHuongDanAnh(sh) {
+  var ss = sh.getParent();
+  if (!ss.getSheetByName('Hướng dẫn')) {
+    var hd = ss.insertSheet('Hướng dẫn', sh.getIndex()); // ngay kế bên tab Ảnh
+    hd.getRange(1, 1, HUONG_DAN_ANH.length, 1).setValues(HUONG_DAN_ANH);
+    hd.setColumnWidth(1, 900);
+    hd.getRange(1, 1).setFontWeight('bold').setFontSize(14).setFontColor('#0140FF');
+    [5, 10, 15, 20, 26].forEach(function (r) { hd.getRange(r, 1).setFontWeight('bold').setFontColor('#E00000'); });
+    hd.getRange(24, 1).setFontWeight('bold').setFontColor('#1F8A3B');
+    hd.setTabColor('#E00000');
+  }
+}
+var COT_XEM_TRUOC = 'Xem trước ảnh';
+function damBaoXemTruoc(sh) {
+  var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  if (head.some(function (h) { return chu(h) === COT_XEM_TRUOC; })) return;
+  var iLink = -1;
+  head.forEach(function (h, i) { if (iLink < 0 && laCotAnh(h)) iLink = i; });
+  if (iLink < 0) return;
+  var col = head.length + 1, chuCot = sh.getRange(1, iLink + 1).getA1Notation().replace(/\d+/g, '');
+  sh.getRange(1, col).setValue(COT_XEM_TRUOC).setFontWeight('bold').setBackground('#E3F2FD');
+  // Ảnh nhỏ lấy từ link Drive ở cột link đầu tiên; link sai thì báo "Link sai".
+  // setFormula nhận cú pháp tiếng Anh (dấu phẩy) bất kể ngôn ngữ của Sheet.
+  sh.getRange(2, col).setFormula('=ARRAYFORMULA(IF(' + chuCot + '2:' + chuCot + '="","",IFERROR(IMAGE("https://drive.google.com/thumbnail?sz=w200&id="&REGEXEXTRACT(' +
+    chuCot + '2:' + chuCot + ',"[-\\w]{25,}")),"Link sai")))');
+  sh.setColumnWidth(col, 110);
+}
+
 // Tab ảnh trống thì tạo tiêu đề; mã có trong Giá mà chưa có dòng thì thêm (Mã + Tên). Không xóa / sửa link đã dán.
 function dongBoMaAnh(sh, giaData) {
+  try { damBaoHuongDanAnh(sh); } catch (e) { }
   var rows = sh.getLastRow() ? sh.getDataRange().getValues() : [];
   var hi = rows.length ? timDongTieuDe(rows, COT_GIA.ma) : -1;
   if (hi < 0) {
@@ -70,17 +132,20 @@ function dongBoMaAnh(sh, giaData) {
   var c = timCot(rows[hi], { ma: COT_GIA.ma, ten: COT_GIA.ten.concat(['Tên sản phẩm']) });
   var co = {};
   for (var i = hi + 1; i < rows.length; i++) { var m = chu(rows[i][c.ma]); if (m) co[m.toUpperCase()] = 1; }
-  var rong = rows[hi].length, moi = [];
+  // Dòng cuối có mã (không dùng getLastRow: cột "Xem trước ảnh" là công thức kéo hết cột nên getLastRow luôn = cuối sheet).
+  var cuoi = hi;
+  for (var k = hi + 1; k < rows.length; k++) if (chu(rows[k][c.ma])) cuoi = k;
+  var moiMa = [], moiTen = [];
   giaData.forEach(function (p) {
     if (co[p.ma.toUpperCase()]) return;
-    var r = []; for (var j = 0; j < rong; j++) r.push('');
-    r[c.ma] = p.ma; if (c.ten !== undefined) r[c.ten] = p.tenGoc || p.ten;
-    moi.push(r);
+    moiMa.push([p.ma]); moiTen.push([p.tenGoc || p.ten]);
   });
-  if (moi.length) {
-    sh.getRange(sh.getLastRow() + 1, 1, moi.length, rong).setValues(moi);
-    if (c.ma !== undefined) sh.getRange(hi + 2, c.ma + 1, sh.getLastRow() - hi - 1, 1).setNumberFormat('@');
+  // Chỉ ghi cột Mã + Tên, không đụng các cột link / cột công thức xem trước.
+  if (moiMa.length) {
+    sh.getRange(cuoi + 2, c.ma + 1, moiMa.length, 1).setNumberFormat('@').setValues(moiMa);
+    if (c.ten !== undefined) sh.getRange(cuoi + 2, c.ten + 1, moiTen.length, 1).setValues(moiTen);
   }
+  try { damBaoXemTruoc(sh); } catch (e) { }
 }
 
 // Nhóm giao theo kho (tab "Kho"): nhanh = có hàng ngay, mai = mai có hàng, cho = chờ đặt.
@@ -226,7 +291,7 @@ function getAll(ti) {
   var anh = {};
   try {
     // Ghép ảnh theo mã không phân biệt hoa/thường (tên file ảnh hay gõ chữ thường).
-    var goc = quaDem('anh', function () { return docAnh(gia.data); }, layTabAnh, CACHE_GIAY_TON).data || {}, theoHoa = {};
+    var goc = quaDem('anh2', function () { return docAnh(gia.data); }, layTabAnh, CACHE_GIAY_TON).data || {}, theoHoa = {};
     Object.keys(goc).forEach(function (m) { theoHoa[m.toUpperCase()] = goc[m]; });
     gia.data.forEach(function (p) { var a = theoHoa[p.ma.toUpperCase()]; if (a) anh[p.ma] = a; });
   } catch (e) { } // lỗi ảnh không được làm hỏng bảng giá

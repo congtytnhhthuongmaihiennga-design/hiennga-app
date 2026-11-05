@@ -69,8 +69,7 @@ function moQuyenLink() {
 }
 
 function ghiTrangThai(s) {
-  var hd = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TAB_HD);
-  if (hd) hd.getRange(3, 2).setValue(s + ' – lúc ' + Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'HH:mm dd/MM/yyyy'));
+  try { SpreadsheetApp.getActiveSpreadsheet().toast(s, '📷 Ảnh SP', 8); } catch (e) { }
 }
 
 // ---------- Thư mục ảnh (tùy chọn) ----------
@@ -88,29 +87,11 @@ function thuMuc() {
   return f;
 }
 
+// Tạo thư mục ảnh (chia sẻ bằng link) cho cách "tải ảnh vào thư mục rồi quét". Tab Hướng dẫn do máy chủ app tạo.
 function chuanBi() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet(), f = thuMuc();
-  tabAnh();
-  var hd = ss.getSheetByName(TAB_HD) || ss.insertSheet(TAB_HD);
-  var dong = [
-    ['HÌNH ẢNH SẢN PHẨM – APP HIỂN NGA', ''],
-    ['Thư mục ảnh (tùy chọn):', f.getUrl()],
-    ['Lần xử lý gần nhất:', ''],
-    ['', ''],
-    ['CÁCH 1 – Dán link (đơn giản nhất):', ''],
-    ['  • Tab "Ảnh" đã có sẵn Mã + Tên sản phẩm lấy từ bảng Giá.', ''],
-    ['  • Mở ảnh trên Google Drive → Chia sẻ → Sao chép đường liên kết → dán vào cột "Link Drive hình ảnh" đúng dòng mã.', ''],
-    ['  • Nhiều ảnh: dán vào "Link ảnh 2", "Link ảnh 3", hoặc nhiều link trong 1 ô (mỗi link 1 dòng).', ''],
-    ['  • Dán xong bấm 📷 Ảnh SP → "Mở quyền xem cho các link ảnh" (để iPhone xem được).', ''],
-    ['CÁCH 2 – Tải ảnh vào thư mục ở dòng 2, đặt tên file = mã (vd GHT.BC6600T.jpg, GHT.BC6600T_2.jpg), rồi bấm "Quét thư mục ảnh".', ''],
-    ['', ''],
-    ['Không đổi tên tab "Ảnh" và các tiêu đề cột. Không cần gõ mã/tên – máy chủ tự điền từ bảng Giá.', '']
-  ];
-  hd.clear();
-  hd.getRange(1, 1, dong.length, 2).setValues(dong);
-  hd.getRange(1, 1).setFontWeight('bold').setFontSize(13);
-  hd.setColumnWidth(1, 620); hd.setColumnWidth(2, 420);
-  baoTin('Đã chuẩn bị xong.\n\nThư mục ảnh: ' + f.getUrl());
+  var f = thuMuc();
+  baoTin('Thư mục ảnh: ' + f.getName() + '\n' + f.getUrl() +
+    '\n\nTải ảnh vào thư mục này, đặt tên file = mã sản phẩm (vd GHT.BC6600T.jpg, GHT.BC6600T_2.jpg), rồi bấm 📷 Ảnh SP → Quét thư mục ảnh.');
 }
 
 // "GHT.BC6600T_2.jpg" -> {ma: "GHT.BC6600T", thuTu: 2}. Chỉ nhận đuôi _N hoặc (N) 1–2 chữ số
@@ -148,21 +129,25 @@ function quetAnh() {
   var t = tabAnh(), sh = t.sh, theoMa = {}, dem = { file: 0 };
   if (t.iMa < 0 || !t.cotLink.length) { baoTin('Tab "Ảnh" thiếu cột "Mã sản phẩm" hoặc cột "Link Drive hình ảnh".'); return; }
   duyet(thuMuc(), theoMa, dem);
-  var rows = sh.getDataRange().getValues(), rong = rows[0].length, viTri = {};
-  for (var i = 1; i < rows.length; i++) { var ma = String(rows[i][t.iMa] || '').trim(); if (ma) viTri[ma.toUpperCase()] = i; }
+  var rows = sh.getDataRange().getValues(), viTri = {}, cuoi = 0;
+  for (var i = 1; i < rows.length; i++) { var ma = String(rows[i][t.iMa] || '').trim(); if (ma) { viTri[ma.toUpperCase()] = i; cuoi = i; } }
+  rows = rows.slice(0, cuoi + 1);
   var moi = 0, capNhat = 0;
   Object.keys(theoMa).forEach(function (k) {
     var x = theoMa[k];
     x.ds.sort(function (a, b) { return a.thuTu - b.thuTu || a.ten.localeCompare(b.ten); });
     var link = x.ds.map(function (a) { return 'https://drive.google.com/file/d/' + a.id + '/view'; });
     var r = viTri[k];
-    if (r === undefined) { var d = []; for (var j = 0; j < rong; j++) d.push(''); d[t.iMa] = x.ma; rows.push(d); r = rows.length - 1; moi++; } else capNhat++;
+    if (r === undefined) { var d = rows[0].map(function () { return ''; }); d[t.iMa] = x.ma; rows.push(d); r = rows.length - 1; moi++; } else capNhat++;
     // Cột link cuối nhận phần còn lại (nhiều link trong 1 ô).
     t.cotLink.forEach(function (c, idx) {
       rows[r][c] = idx < t.cotLink.length - 1 ? (link[idx] || '') : link.slice(idx).join('\n');
     });
   });
-  sh.getRange(1, 1, rows.length, rong).setValues(rows);
+  // Chỉ ghi cột Mã + các cột link (không ghi đè cột công thức "Xem trước ảnh").
+  [t.iMa].concat(t.cotLink).forEach(function (c) {
+    sh.getRange(2, c + 1, rows.length - 1, 1).setValues(rows.slice(1).map(function (r) { return [r[c]]; }));
+  });
   var tom = dem.file + ' ảnh · ' + Object.keys(theoMa).length + ' mã (' + capNhat + ' cập nhật, ' + moi + ' mã không có trong bảng giá)';
   ghiTrangThai('Quét thư mục: ' + tom);
   try { SpreadsheetApp.getActiveSpreadsheet().toast(tom, '📷 Đã quét ảnh', 8); } catch (e) { }

@@ -84,7 +84,7 @@ function khoiTaoSheetTon() {
 }
 
 function xoaDem() {
-  demXoa('gia'); demXoa('anh'); demXoa('tonkho'); demXoa('th');
+  demXoa('gia'); demXoa('anh2'); demXoa('tonkho'); demXoa('th');
   CacheService.getScriptCache().remove('ds_khoa');
 }
 function xoaDemCoBao() {
@@ -96,7 +96,7 @@ function xoaDemCoBao() {
 function warmCache() {
   xoaDem();
   quaDem('gia', docGia, TAB.gia);
-  try { var g = quaDem('gia', docGia, TAB.gia); quaDem('anh', function () { return docAnh(g.data); }, layTabAnh, CACHE_GIAY_TON); } catch (e) { }
+  try { var g = quaDem('gia', docGia, TAB.gia); quaDem('anh2', function () { return docAnh(g.data); }, layTabAnh, CACHE_GIAY_TON); } catch (e) { }
   try { quaDem('tonkho', docTonKho, function () { return layTabTon(false); }, CACHE_GIAY_TON); } catch (e) { }
 }
 
