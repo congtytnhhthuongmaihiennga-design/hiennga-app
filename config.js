@@ -30,6 +30,17 @@ window.APP_CONFIG = {
   WEBSITE: '',              // noithathiennga.vn – tạm để trống vì trang đang không truy cập được
   NGANH_HANG: 'Gạch ốp lát · Thiết bị vệ sinh · Thiết bị nhà bếp · Sơn nước · Trang trí nội thất',
 
+  // Logo thương hiệu (tên khớp cột "Hãng", không phân biệt dấu/hoa thường). Chỉ để logo đã kiểm tra đúng
+  // từ trang chính thức của hãng; hãng không có ở đây thì app hiện chữ.
+  LOGO_HANG: {
+    'Đồng Tâm': 'img/hang/dongtam.png',
+    'Inax': 'img/hang/inax.png',
+    'TOTO': 'img/hang/toto.png',
+    'American Standard': 'img/hang/american-standard.webp',
+    'Viglacera': 'img/hang/viglacera.png',
+    'Yale': 'img/hang/yale.png'
+  },
+
   NGUONG_TON_KHACH: 50,     // đại lý thấy "50+" khi tồn > 50 (máy chủ đã chặn trần 51)
 
   // Nhóm hàng: "ten" khớp cột "Nhóm hàng" trong Sheet (không phân biệt dấu/hoa thường).

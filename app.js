@@ -280,6 +280,9 @@
 
   // ---------- Dòng / thẻ sản phẩm ----------
   // Tên vật tư là tiêu đề lớn; mã SP + hãng nhỏ ở dưới.
+  var LOGO_HANG = {};
+  Object.keys(CFG.LOGO_HANG || {}).forEach(function (h) { LOGO_HANG[norm(h)] = CFG.LOGO_HANG[h]; });
+  function logoHang(h) { return LOGO_HANG[norm(h)] || ''; }
   function nhanCap(p) { return p._cap ? '<span class="cap cap-' + p._cap + '">Loại ' + p._cap + '</span>' : ''; }
   function dongPhu(p) {
     return '<div class="row-sub"><span class="ma">' + esc(p.ma) + '</span>' + (p.hang ? ' · ' + esc(p.hang) : '') + (p._vt ? ' · ' + p._vt + ' viên/thùng' : '') + '</div>';
@@ -406,10 +409,16 @@
       return '<button type="button" class="dm-card" data-nhom="' + g.key + '"><span class="ic-wrap">' + ic(g.icon) + '</span><b>' + esc(g.ten) + '</b><small>' + (dem[g.key] || 0) + ' mã</small></button>';
     }).join('') + '</div>';
 
+    // Hãng có logo: ô logo lớn; hãng chưa có logo: giữ dạng chữ.
     var dsHang = Object.keys(hang).sort(function (a, b) { return hang[b] - hang[a]; });
-    if (dsHang.length) html += '<div class="h2">Thương hiệu</div><div class="chips wrap">' + dsHang.map(function (h) {
-      return '<button type="button" class="chip" data-hang-home="' + esc(h) + '">' + esc(h) + ' <small>' + hang[h] + '</small></button>';
-    }).join('') + '</div>';
+    var coLogo = dsHang.filter(logoHang), chuaLogo = dsHang.filter(function (h) { return !logoHang(h); });
+    if (dsHang.length) html += '<div class="h2">Thương hiệu</div>' +
+      (coLogo.length ? '<div class="hang-grid">' + coLogo.map(function (h) {
+        return '<button type="button" class="hang-o" data-hang-home="' + esc(h) + '"><img src="' + esc(logoHang(h)) + '" alt="' + esc(h) + '" loading="lazy"><small>' + esc(h) + ' · ' + hang[h] + ' mã</small></button>';
+      }).join('') + '</div>' : '') +
+      (chuaLogo.length ? '<div class="chips wrap"' + (coLogo.length ? ' style="margin-top:10px"' : '') + '>' + chuaLogo.map(function (h) {
+        return '<button type="button" class="chip" data-hang-home="' + esc(h) + '">' + esc(h) + ' <small>' + hang[h] + '</small></button>';
+      }).join('') + '</div>' : '');
 
     var gd = ganDay();
     if (gd.length) html += '<div class="h2">Xem gần đây <button type="button" data-nav="ganday">Tất cả</button></div><div class="gan-day">' + gd.slice(0, 10).map(function (m) {
@@ -447,7 +456,11 @@
     // Đã đăng nhập: lọc nhanh "Còn hàng" (bỏ mã tồn ≤ 0).
     if (S.sess && S.ton) chips += '<button type="button" class="chip chip-ton' + (S.chiConHang ? ' on' : '') + '" data-act="con-hang"><span class="cham"></span>Còn hàng</button>';
     if (dsHang.length > 1) chips += '<button type="button" class="chip' + (S.hang ? '' : ' on') + '" data-hang="">Tất cả hãng</button>' +
-      dsHang.map(function (h) { return '<button type="button" class="chip' + (S.hang === h ? ' on' : '') + '" data-hang="' + esc(h) + '">' + esc(h) + ' <small>' + hang[h] + '</small></button>'; }).join('');
+      dsHang.map(function (h) {
+        var l = logoHang(h);
+        return '<button type="button" class="chip' + (l ? ' chip-logo' : '') + (S.hang === h ? ' on' : '') + '" data-hang="' + esc(h) + '">' +
+          (l ? '<img src="' + esc(l) + '" alt="' + esc(h) + '">' : esc(h)) + ' <small>' + hang[h] + '</small></button>';
+      }).join('');
     $('main').innerHTML = '<div class="loc-bar"><div class="chips">' + chips + '</div></div>' + goiYDangNhap() + '<div id="list-kq">' + htmlKetQuaDS() + '</div>';
   }
   function htmlKetQuaDS() {
@@ -511,7 +524,7 @@
       (anh.length > 1 ? '<button type="button" class="anh-nav trai" data-anh="-1" aria-label="Ảnh trước">' + ic('chevL') + '</button><button type="button" class="anh-nav phai" data-anh="1" aria-label="Ảnh sau">' + ic('chevR') + '</button><span class="anh-so">' + (S.anhIdx + 1) + '/' + anh.length + '</span>' : '') + '</div>';
     html += '<h2 class="ct-ten">' + esc(p._ten) + '</h2>' +
       '<button type="button" class="ct-ma" data-act="chep-ma" data-ma="' + esc(p.ma) + '" title="Chép mã">Mã SP: <b>' + esc(p.ma) + '</b>' + ic('copy', 'ic-sm') + '</button>' +
-      '<div class="ct-tags">' + (p.hang ? '<span class="tag hang">' + esc(p.hang) + '</span>' : '') + nhanCap(p) + '<span class="tag">' + esc(g.ten) + '</span>' +
+      '<div class="ct-tags">' + (p.hang ? (logoHang(p.hang) ? '<span class="tag hang-logo"><img src="' + esc(logoHang(p.hang)) + '" alt="' + esc(p.hang) + '"></span>' : '<span class="tag hang">' + esc(p.hang) + '</span>') : '') + nhanCap(p) + '<span class="tag">' + esc(g.ten) + '</span>' +
       [p.kc, p.loai].filter(String).map(function (t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('') + '</div>';
 
     // Giá
