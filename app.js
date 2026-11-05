@@ -46,7 +46,10 @@
     tag: '<path d="M7.5 7.5h.01"/><path d="M3 6v5.2a2 2 0 0 0 .6 1.4l8.8 8.8a2 2 0 0 0 2.8 0l5.2-5.2a2 2 0 0 0 0-2.8L11.6 4.6A2 2 0 0 0 10.2 4H5a2 2 0 0 0-2 2z"/>',
     chevL: '<path d="M15 6l-6 6 6 6"/>',
     chevR: '<path d="M9 6l6 6-6 6"/>',
-    plus: '<path d="M12 5v14M5 12h14"/>'
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    pin: '<circle cx="12" cy="11" r="3"/><path d="M17.7 16.7L13.4 21a2 2 0 0 1-2.8 0l-4.3-4.3a8 8 0 1 1 11.4 0z"/>',
+    mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+    link: '<path d="M9 15l6-6"/><path d="M11 6l.5-.5a5 5 0 0 1 7 7l-.5.5M13 18l-.4.5a5 5 0 0 1-7-7l.4-.5"/>'
   };
   function ic(n, cls) {
     return '<svg class="ic ' + (cls || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (IC[n] || IC.khac) + '</svg>';
@@ -84,6 +87,8 @@
   function laKhach() { return !S.sess || S.sess.role === 'khachhang'; }
   function laNoiBo() { return !!S.sess && S.sess.role !== 'khachhang'; }
   function sdt() { return String(CFG.LIEN_HE_SDT || '').replace(/[^\d+]/g, ''); }
+  // 0939182288 -> "093 918 22 88" (cách ghi trên trang Facebook công ty)
+  function sdtDep() { var s = sdt(); return s.length === 10 ? s.replace(/(\d{3})(\d{3})(\d{2})(\d{2})/, '$1 $2 $3 $4') : s; }
   function toast(msg) {
     var t = $('toast'); t.textContent = msg; t.hidden = false;
     clearTimeout(toast._t); toast._t = setTimeout(function () { t.hidden = true; }, 2600);
@@ -367,6 +372,7 @@
         (S.capNhat ? 'Cập nhật ' + ngay(S.capNhat) + ' · ' : '') + S.items.length.toLocaleString('vi-VN') + ' mã · ' + Object.keys(hang).length + ' thương hiệu</small></span></button>';
     } else if (S.dangTai) html += khungTai();
     else html += '<div class="trong">' + ic('tag') + '<b>Chưa có bảng giá</b>Dữ liệu sẽ hiện khi công ty cập nhật bảng giá.</div>';
+    html += theLienHe();
 
     html += '<div class="h2">Ngành hàng</div><div class="dm-grid">' + dsNhom().map(function (g) {
       return '<button type="button" class="dm-card" data-nhom="' + g.key + '"><span class="ic-wrap">' + ic(g.icon) + '</span><b>' + esc(g.ten) + '</b><small>' + (dem[g.key] || 0) + ' mã</small></button>';
@@ -383,9 +389,24 @@
       return '<button type="button" class="mini" data-sp="' + esc(m) + '">' + oAnh(p) + '<div class="tx"><b>' + esc(p.ma) + '</b><span class="gia">' + tien(S.sess && p.dl > 0 ? p.dl : p.ny) + '</span></div></button>';
     }).join('') + '</div>';
 
-    if (sdt()) html += '<div class="lien-he"><a class="btn btn-chinh" href="https://zalo.me/' + sdt() + '" target="_blank" rel="noopener">' + ic('chat') + 'Zalo</a>' +
-      '<a class="btn btn-do" href="tel:' + sdt() + '">' + ic('phone') + 'Gọi ' + esc(CFG.LIEN_HE_TEN || '') + '</a></div>';
-    return html;
+    return html + thongTinCongTy();
+  }
+  // Thẻ "Tư vấn & đặt hàng" ngay dưới banner – đại lý thấy liền, khỏi cuộn xuống cuối.
+  function theLienHe() {
+    if (!sdt()) return '';
+    return '<div class="lh-card"><div class="lh-info"><b>Tư vấn & đặt hàng</b><small>' + esc(CFG.LIEN_HE_TEN || '') + ' · ' + sdtDep() + '</small></div>' +
+      '<a class="lh-btn lh-zalo" href="https://zalo.me/' + sdt() + '" target="_blank" rel="noopener">' + ic('chat', 'ic-sm') + 'Zalo</a>' +
+      '<a class="lh-btn lh-goi" href="tel:' + sdt() + '">' + ic('phone', 'ic-sm') + 'Gọi</a></div>';
+  }
+  function thongTinCongTy() {
+    var d = [];
+    if (CFG.DIA_CHI) d.push('<a href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent((CFG.TEN_DAY_DU || '') + ' ' + CFG.DIA_CHI) + '" target="_blank" rel="noopener">' + ic('pin', 'ic-sm') + esc(CFG.DIA_CHI) + '</a>');
+    if (sdt()) d.push('<a href="tel:' + sdt() + '">' + ic('phone', 'ic-sm') + sdtDep() + '</a>');
+    if (CFG.EMAIL) d.push('<a href="mailto:' + esc(CFG.EMAIL) + '">' + ic('mail', 'ic-sm') + esc(CFG.EMAIL) + '</a>');
+    if (CFG.FACEBOOK) d.push('<a href="' + esc(CFG.FACEBOOK) + '" target="_blank" rel="noopener">' + ic('link', 'ic-sm') + 'Trang Facebook</a>');
+    if (CFG.WEBSITE) d.push('<a href="https://' + esc(CFG.WEBSITE) + '" target="_blank" rel="noopener">' + ic('link', 'ic-sm') + esc(CFG.WEBSITE) + '</a>');
+    return '<footer class="cty"><div class="cty-head"><span class="logo">' + logoHtml() + '</span><div><b>' + esc(CFG.TEN_DAY_DU || CFG.TEN_APP || '') + '</b>' +
+      (CFG.NGANH_HANG ? '<small>' + esc(CFG.NGANH_HANG) + '</small>' : '') + '</div></div>' + d.join('') + '</footer>';
   }
 
   function veDanhSach() {
@@ -420,7 +441,8 @@
       var on = S.nhom === t[0] || (t[0] === 'all' && S.nhom && S.nhom !== 'ganday');
       return '<button type="button" class="bn' + (on ? ' on' : '') + '" data-nav="' + t[0] + '">' + ic(t[2]) + '<span>' + t[1] + '</span></button>';
     }).join('');
-    if (sdt()) html += '<a class="bn" href="https://zalo.me/' + sdt() + '" target="_blank" rel="noopener">' + ic('chat') + '<span>Zalo</span></a>';
+    if (sdt()) html += '<a class="bn" href="https://zalo.me/' + sdt() + '" target="_blank" rel="noopener">' + ic('chat') + '<span>Zalo</span></a>' +
+      '<a class="bn bn-goi" href="tel:' + sdt() + '">' + ic('phone') + '<span>Gọi</span></a>';
     $('bottom-nav').innerHTML = html;
   }
 
@@ -532,7 +554,8 @@
   function baoGia(p) {
     // Báo giá gửi khách: chỉ giá niêm yết, không lộ giá đại lý.
     return [p.ma + (p.ten ? ' – ' + p.ten : ''), p.hang ? 'Hãng: ' + p.hang : '', p.kc ? 'Quy cách: ' + p.kc : '',
-      'Giá niêm yết: ' + tien(p.ny) + (p.ny > 0 && p.dvt ? '/' + p.dvt : ''), location.origin + location.pathname + '#sp=' + encodeURIComponent(p.ma)].filter(String).join('\n');
+      'Giá niêm yết: ' + tien(p.ny) + (p.ny > 0 && p.dvt ? '/' + p.dvt : ''), location.origin + location.pathname + '#sp=' + encodeURIComponent(p.ma),
+      (CFG.TEN_DAY_DU || '') + (sdt() ? ' · ' + sdtDep() : '')].filter(String).join('\n');
   }
   function chep(txt, xong) {
     var ok = function () { if (xong) xong(); };
@@ -729,7 +752,7 @@
     $('login-sub').textContent = CFG.KHAU_HIEU || '';
     document.title = 'Bảng giá ' + (CFG.TEN_APP || '');
     $('login-foot').innerHTML = DEMO ? 'Dùng thử: tài khoản <b>admin</b>, <b>nv</b> hoặc <b>daily</b>, mật khẩu bất kỳ.'
-      : (sdt() ? 'Chưa có tài khoản / quên mật khẩu? <a href="https://zalo.me/' + sdt() + '" target="_blank" rel="noopener">Liên hệ ' + esc(CFG.LIEN_HE_TEN || '') + ' · ' + esc(CFG.LIEN_HE_SDT) + '</a>' : '');
+      : (sdt() ? 'Chưa có tài khoản / quên mật khẩu? <a href="https://zalo.me/' + sdt() + '" target="_blank" rel="noopener">Liên hệ ' + esc(CFG.LIEN_HE_TEN || '') + ' · ' + sdtDep() + '</a>' : '');
   }
 
   // Mở app là vào thẳng bảng giá; đăng nhập chỉ khi cần giá đại lý / tồn kho.

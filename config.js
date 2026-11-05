@@ -23,6 +23,12 @@ window.APP_CONFIG = {
   // Nút "Hỏi Zalo" / "Gọi đặt hàng" và dòng "Quên mật khẩu".
   LIEN_HE_TEN: 'Hiển Nga',
   LIEN_HE_SDT: '0939182288',
+  // Thông tin công ty (lấy từ trang Facebook + bảng hiệu cửa hàng). Để trống mục nào thì app ẩn mục đó.
+  DIA_CHI: '18/2E Trần Hưng Đạo, TP. Long Xuyên, An Giang',
+  EMAIL: 'giakhang.ag@gmail.com',
+  FACEBOOK: 'https://www.facebook.com/profile.php?id=100063506084558',
+  WEBSITE: '',              // noithathiennga.vn – tạm để trống vì trang đang không truy cập được
+  NGANH_HANG: 'Gạch ốp lát · Thiết bị vệ sinh · Thiết bị nhà bếp · Sơn nước · Trang trí nội thất',
 
   NGUONG_TON_KHACH: 50,     // đại lý thấy "50+" khi tồn > 50 (máy chủ đã chặn trần 51)
 
