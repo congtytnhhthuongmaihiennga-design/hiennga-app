@@ -12,6 +12,7 @@ function onOpen() {
     .addSeparator()
     .addItem('Gửi thử báo đơn (Email + Telegram)', 'thuBaoDon')
     .addItem('Cài Telegram báo đơn', 'caiTelegram')
+    .addItem('Bật nhắc chừa hàng hết hạn (7h sáng)', 'caiNhacChua')
     .addToUi();
 }
 
@@ -28,6 +29,8 @@ function onEdit(e) {
     else if (ten === TAB.tonkho || ten === TAB.kho || ten === TAB.noima) demXoa('tonkho');
     else if (ten === TAB.users) CacheService.getScriptCache().remove('ds_khoa');
     else if (ten === TAB.thuongHieu) demXoa('th');
+    else if (ten === TAB_CAI_CHUA) CacheService.getScriptCache().remove('cai_chua');
+    else if (ten === TAB_DON) demXoa('giu');
   } catch (err) { }
 }
 
@@ -87,7 +90,8 @@ function khoiTaoSheetTon() {
 }
 
 function xoaDem() {
-  demXoa('gia'); demXoa('anh2'); demXoa('tonkho'); demXoa('th');
+  demXoa('gia'); demXoa('anh2'); demXoa('tonkho'); demXoa('th'); demXoa('giu');
+  CacheService.getScriptCache().remove('cai_chua');
   CacheService.getScriptCache().remove('ds_khoa');
 }
 function xoaDemCoBao() {

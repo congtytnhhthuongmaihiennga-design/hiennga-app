@@ -166,6 +166,7 @@
     S.items.forEach(function (p) { S.byMa[p.ma] = p; });
     S.anh = res.anh || {};
     S.capNhat = res.capNhat || res.luc || '';
+    if (res.chuaCfg && res.chuaCfg.length) S.chuaCfg = res.chuaCfg;
   }
   function taiDuLieu() {
     var c = LS.get(khoaDem());
@@ -638,7 +639,9 @@
     if (S.tonLoi && !S.ton) return '<div class="mo">' + esc(S.tonLoi) + '</div><button type="button" class="btn btn-chinh btn-nho" style="margin-top:8px" data-act="thu-lai">Thử lại</button>';
     if (!S.ton) return '<div class="mo">Đang tải tồn kho…</div>';
     var d = S.ton[p.ma], gio = S.tonLuc ? '<div class="ton-gio">' + ic('clock', 'ic-sm') + 'Tồn kho cập nhật ' + gioNgay(S.tonLuc) + '</div>' : '';
-    if (!d || d.tong <= 0) return '<div class="ton-lon cho"><span class="cham"></span><div><b>Hết hàng</b><small>Liên hệ để đặt hàng / hỏi ngày về</small></div></div>' + gio;
+    // Nhân viên / quản trị: thấy phần đang giữ cho đơn + chừa hàng (số lớn ở trên đã là "Được bán").
+    var giuDong = laNoiBo() && d && d.giu ? '<div class="ton-giu">' + ic('lock', 'ic-sm') + '<span>Đang giữ cho đơn / chừa hàng: <b>' + soTon(d.giu, d, true) + '</b> · Tồn thực: ' + soTon(d.tonGoc, d, true) + '</span></div>' : '';
+    if (!d || d.tong <= 0) return '<div class="ton-lon cho"><span class="cham"></span><div><b>Hết hàng' + (d && d.giu ? ' (đã giữ hết cho đơn)' : '') + '</b><small>Liên hệ để đặt hàng / hỏi ngày về</small></div></div>' + giuDong + gio;
     // Dòng lớn: lượng có sẵn (hoặc mai có / chờ hàng nếu kho gần không còn).
     var t = tierChinh(d), so1 = d.tier[t];
     var html = '<div class="ton-lon ' + t + '"><span class="cham"></span><div><b>' + soTon(so1, d) + '</b><small>' + TEN_TIER[t] +
@@ -653,7 +656,7 @@
       return '<div class="kho"><div class="kho-dong"><span>' + ic('box', 'ic-sm') + esc(k.ten) + '</span><span>' + soTon(k.tong, d, true) + '</span></div>' +
         (k.lo && k.lo.length ? '<div class="lo">' + k.lo.map(function (l) { return 'Lô ' + esc(l.so) + ': ' + so(l.sl); }).join(' · ') + '</div>' : '') + '</div>';
     }).join('') + '</div>';
-    return html + gio;
+    return html + giuDong + gio;
   }
   function gioNgay(iso) {
     var d = new Date(iso);
@@ -803,9 +806,28 @@
   // GIỎ HÀNG + ĐƠN HÀNG (GĐ1): đại lý chọn mã -> gửi đơn -> quản trị duyệt trên trang quản trị.
   // Giỏ chỉ lưu trên máy. Giá + thành tiền hiện ở đây chỉ để xem trước: máy chủ tự tính lại khi gửi.
   // ============================================================
-  var TEN_TT = { moi: 'Chờ duyệt', xacnhan: 'Đã xác nhận', danggiao: 'Đang giao', dagiao: 'Đã giao', huy: 'Đã hủy', tuchoi: 'Từ chối' };
+  var TEN_TT = { moi: 'Chờ duyệt', giu: 'Đang chừa hàng', xacnhan: 'Đã xác nhận', danggiao: 'Đang giao', dagiao: 'Đã giao', huy: 'Đã hủy', tuchoi: 'Từ chối' };
   S.gio = LS.get('giohang') || [];      // [{ma, sl}]  sl = số thùng (gạch tính m²) hoặc số đơn vị
   function luuGio() { LS.set('giohang', S.gio); }
+  // Chừa hàng (GĐ2): lựa chọn số ngày + % cọc do công ty cài trong Sheet ("Cài đặt chừa hàng").
+  S.chuaCfg = [{ ngay: 3, coc: 0 }, { ngay: 5, coc: 0 }, { ngay: 7, coc: 10 }, { ngay: 10, coc: 10 }, { ngay: 15, coc: 20 }, { ngay: 30, coc: 30 }];
+  function cocDuKien(tong, n) { var c = S.chuaCfg.filter(function (x) { return x.ngay === n; })[0]; return c && c.coc ? { pc: c.coc, tien: Math.round(tong * c.coc / 100 / 1000) * 1000 } : { pc: 0, tien: 0 }; }
+  function conLai(iso) { // "còn 3 ngày" / "hết hạn hôm nay" / "đã hết hạn"
+    var h = new Date(iso).getTime() - Date.now(); if (isNaN(h)) return '';
+    if (h < 0) return 'đã hết hạn';
+    var n = Math.floor(h / 86400000); return n < 1 ? 'hết hạn hôm nay' : 'còn ' + n + ' ngày';
+  }
+  function htmlChuaDon(d) {
+    if (d.loai !== 'chua') return '';
+    var het = d.tt === 'giu' && d.han && new Date(d.han).getTime() < Date.now();
+    var s = '<div class="chua-tt' + (het ? ' het' : '') + '">' + ic('lock', 'ic-sm') + '<span>Chừa ' + d.soNgay + ' ngày';
+    if (d.tt === 'giu' && d.han) s += ' · giữ tới <b>' + ngay(d.han).slice(0, 5) + '</b> (' + conLai(d.han) + ')';
+    else if (d.tt === 'moi') s += ' · chờ công ty duyệt giữ hàng';
+    s += (d.coc ? '<br>Đặt cọc ' + tien(d.coc) + (d.daCoc >= d.coc ? ' – <b>đã nhận cọc</b>' : d.daCoc ? ' – đã nhận ' + tien(d.daCoc) : ' – <b>chưa cọc</b>') : '') +
+      (het ? '<br>Đã hết hạn – công ty sẽ liên hệ để gia hạn hoặc giao hàng' : '') + (d.xinGH ? '<br>Đã xin gia hạn thêm ' + d.xinGH + ' ngày – chờ duyệt' : '') + '</span></div>';
+    if (d.tt === 'giu' && !d.xinGH) s += '<div class="chua-xin"><button type="button" class="btn btn-vien btn-nho" data-xin-mo="' + esc(d.ma) + '">Xin gia hạn</button></div>';
+    return s;
+  }
   function giaDon(p) { return p.dl > 0 ? p.dl : p.ny; }
   function donViDat(p) { var qd = quyDoi(p); return qd && /^m(2|²)$/i.test(String(p.dvt || '').trim()) ? 'thùng' : (p.dvt || 'đơn vị'); }
   function tienDong(p, sl) {
@@ -842,6 +864,13 @@
           '<span class="gio-dv">' + esc(p ? donViDat(p) : '') + '</span></div>';
       }).join('') + '</div>';
       html += '<div class="gio-tong"><span>Tạm tính (' + S.gio.length + ' mã)</span><b>' + tien(tongGio()) + '</b></div><p class="mo">Giá đại lý của tài khoản. Công ty xác nhận lại khi duyệt đơn.</p>';
+      var chua = f.loai === 'chua', nNgay = Number(f.soNgay) || (S.chuaCfg[0] || {}).ngay || 3, coc = cocDuKien(tongGio(), nNgay);
+      html += '<div class="sec">Loại đơn</div><div class="chips">' +
+        [['', 'Đặt hàng'], ['chua', 'Chừa hàng (giữ hàng)']].map(function (h) { return '<button type="button" class="chip' + ((f.loai || '') === h[0] ? ' on' : '') + '" data-don-loai="' + h[0] + '">' + h[1] + '</button>'; }).join('') + '</div>';
+      if (chua) html += '<div class="chua-box"><div class="mo">Giữ hàng trong:</div><div class="chips">' + S.chuaCfg.map(function (c) {
+          return '<button type="button" class="chip' + (c.ngay === nNgay ? ' on' : '') + '" data-don-ngay="' + c.ngay + '">' + c.ngay + ' ngày' + (c.coc ? ' <small>cọc ' + c.coc + '%</small>' : '') + '</button>'; }).join('') + '</div>' +
+        '<p class="chua-coc">' + (coc.tien ? 'Cần đặt cọc ' + coc.pc + '% ≈ <b>' + tien(coc.tien) + '</b>' : 'Không cần đặt cọc') + '</p>' +
+        '<p class="mo">Hàng được giữ sau khi Hiển Nga duyệt. Gần hết hạn có thể xin gia hạn trong "Đơn của tôi".</p></div>';
       html += '<div class="sec">Giao hàng</div><div class="chips">' +
         [['giao', 'Giao tận nơi'], ['nhan', 'Nhận tại kho']].map(function (h) { return '<button type="button" class="chip' + ((f.hinhThuc || 'giao') === h[0] ? ' on' : '') + '" data-don-ht="' + h[0] + '">' + h[1] + '</button>'; }).join('') + '</div>' +
         '<div class="form" style="margin-top:10px"><label>Tên cửa hàng / người nhận<input data-don="tenKH" value="' + esc(f.tenKH != null ? f.tenKH : (s.tenCty || s.name || '')) + '"></label>' +
@@ -850,7 +879,7 @@
         '<label>Ghi chú<input data-don="ghiChu" value="' + esc(f.ghiChu || '') + '" placeholder="Giao buổi sáng, gọi trước…"></label></div>';
     }
     html += '</div><div class="sh-foot"><button type="button" class="btn btn-vien" data-act="don-cua-toi">' + ic('don') + 'Đơn của tôi</button>' +
-      (S.gio.length ? '<button type="button" class="btn btn-chinh" data-act="gui-don">Gửi đơn</button>' : '') + '</div>';
+      (S.gio.length ? '<button type="button" class="btn btn-chinh" data-act="gui-don">' + ((LS.get('don_nhap') || {}).loai === 'chua' ? 'Gửi yêu cầu chừa' : 'Gửi đơn') + '</button>' : '') + '</div>';
     var cuon = $('sheet').getAttribute('data-loai') === 'gio' ? $('sheet').scrollTop : 0;
     moSheet(html, 'gio');
     $('sheet').scrollTop = cuon;
@@ -859,24 +888,27 @@
     var f = LS.get('don_nhap') || {}, s = S.sess || {};
     var d = { items: S.gio.map(function (x) { return { ma: x.ma, sl: x.sl }; }), hinhThuc: f.hinhThuc || 'giao',
       tenKH: f.tenKH != null ? f.tenKH : (s.tenCty || s.name || ''), sdt: f.sdt != null ? f.sdt : (s.sdt || ''),
-      diaChi: f.diaChi != null ? f.diaChi : (s.diaChi || ''), ngayCan: f.ngayCan || '', ghiChu: f.ghiChu || '' };
+      diaChi: f.diaChi != null ? f.diaChi : (s.diaChi || ''), ngayCan: f.ngayCan || '', ghiChu: f.ghiChu || '',
+      loai: f.loai === 'chua' ? 'chua' : '', soNgay: f.loai === 'chua' ? (Number(f.soNgay) || (S.chuaCfg[0] || {}).ngay || 3) : 0 };
     if (d.hinhThuc === 'giao' && !String(d.diaChi).trim()) { toast('Nhập địa chỉ giao hàng'); return; }
     nut.disabled = true; nut.textContent = 'Đang gửi…';
     api('taoDon', d, true).then(function (res) {
       if (!res || res.status !== 'ok') throw new Error((res && res.msg) || 'lỗi');
       S.gio = []; luuGio(); LS.set('don_nhap', { hinhThuc: d.hinhThuc, tenKH: d.tenKH, sdt: d.sdt, diaChi: d.diaChi });
-      veTopbar(); toast('Đã gửi đơn ' + res.ma + ' – công ty sẽ xác nhận sớm'); moDonCuaToi();
-    }).catch(function (e) { nut.disabled = false; nut.textContent = 'Gửi đơn'; toast('Chưa gửi được: ' + loiDeHieu(e)); });
+      veTopbar(); toast((d.loai ? 'Đã gửi yêu cầu chừa hàng ' : 'Đã gửi đơn ') + res.ma + ' – công ty sẽ xác nhận sớm'); moDonCuaToi();
+    }).catch(function (e) { nut.disabled = false; nut.textContent = d.loai ? 'Gửi yêu cầu chừa' : 'Gửi đơn'; toast('Chưa gửi được: ' + loiDeHieu(e)); });
   }
   function moDonCuaToi() {
     moSheet(dauSheet('Đơn của tôi') + '<div class="sh-body">' + khungTai() + '</div>', 'don');
     api('donCuaToi').then(function (res) {
       if (!res || res.status !== 'ok') throw new Error((res && res.msg) || 'lỗi');
+      if (res.chuaCfg && res.chuaCfg.length) S.chuaCfg = res.chuaCfg;
       var b = $('sheet').querySelector('.sh-body'); if (!b) return;
       b.innerHTML = !res.data.length ? '<div class="trong">' + ic('don') + '<b>Chưa có đơn nào</b>Đơn đã gửi sẽ hiện ở đây kèm trạng thái.</div>' :
         res.data.map(function (d) {
           return '<div class="don-the"><div class="don-dau"><b>' + esc(d.ma) + '</b><span class="tt tt-' + d.tt + '">' + (TEN_TT[d.tt] || d.tt) + '</span></div>' +
             '<div class="mo">' + gioNgay(d.ngay) + ' · ' + esc(d.hinhThuc) + (d.ngayCan ? ' · cần ' + esc(d.ngayCan) : '') + '</div>' +
+            htmlChuaDon(d) +
             '<div class="don-hang">' + d.items.map(function (x) { return esc(x.ma) + ' × ' + so(x.sl) + ' ' + esc(x.dv) + (x.qd ? ' (' + esc(x.qd) + ')' : ''); }).join('<br>') + '</div>' +
             '<div class="don-cuoi"><b>' + tien(d.tong) + '</b>' + (d.tt === 'moi' ? '<button type="button" class="btn btn-vien btn-nho" data-huy-don="' + esc(d.ma) + '">Hủy đơn</button>' : '') + '</div></div>';
         }).join('');
@@ -1025,7 +1057,7 @@
 
   // ---------- Bấm (một chỗ xử lý cho cả app) ----------
   document.addEventListener('click', function (e) {
-    var el = e.target.closest('[data-act],[data-sp],[data-nhom],[data-nav],[data-hang],[data-hang-home],[data-loc],[data-sort],[data-anh],[data-user],[data-tem-kho],[data-tem-sl],[data-loc-kc],[data-gio-sl],[data-don-ht],[data-huy-don]');
+    var el = e.target.closest('[data-act],[data-sp],[data-nhom],[data-nav],[data-hang],[data-hang-home],[data-loc],[data-sort],[data-anh],[data-user],[data-tem-kho],[data-tem-sl],[data-loc-kc],[data-gio-sl],[data-don-ht],[data-huy-don],[data-don-loai],[data-don-ngay],[data-xin-mo],[data-xin-ngay]');
     var menu = $('acct-menu');
     if (!menu.hidden && !e.target.closest('#acct-menu') && !(el && el.getAttribute('data-act') === 'menu')) menu.hidden = true;
     if (!el) { if (e.target.id === 'sheet-nen') dongSheet(); return; }
@@ -1037,6 +1069,21 @@
     if (el.hasAttribute('data-hang')) { S.hang = el.getAttribute('data-hang'); S.trang = 1; S.loc = {}; var hh = docHash(); hh.h = S.hang; ghiHash(hh, true); veTrang(); return; }
     if (el.hasAttribute('data-gio-sl')) { var gi = S.gio[Number(el.getAttribute('data-gio-sl'))]; if (gi) themGio(gi.ma, gi.sl + Number(el.getAttribute('data-d'))); moGioHang(); return; }
     if (el.hasAttribute('data-don-ht')) { var fn = LS.get('don_nhap') || {}; fn.hinhThuc = el.getAttribute('data-don-ht'); LS.set('don_nhap', fn); moGioHang(); return; }
+    if (el.hasAttribute('data-don-loai') || el.hasAttribute('data-don-ngay')) {
+      var fl = LS.get('don_nhap') || {};
+      if (el.hasAttribute('data-don-loai')) fl.loai = el.getAttribute('data-don-loai'); else fl.soNgay = Number(el.getAttribute('data-don-ngay'));
+      LS.set('don_nhap', fl); moGioHang(); return;
+    }
+    if (el.hasAttribute('data-xin-mo')) {
+      var mx = el.getAttribute('data-xin-mo');
+      el.parentNode.innerHTML = '<div class="mo">Xin giữ thêm:</div><div class="chips">' + S.chuaCfg.map(function (c) { return '<button type="button" class="chip" data-xin-ngay="' + esc(mx) + '|' + c.ngay + '">' + c.ngay + ' ngày</button>'; }).join('') + '</div>';
+      return;
+    }
+    if (el.hasAttribute('data-xin-ngay')) {
+      var px = el.getAttribute('data-xin-ngay').split('|');
+      api('xinGiaHan', { ma: px[0], soNgay: Number(px[1]) }, true).then(function (r) { toast(r && r.status === 'ok' ? r.msg : 'Chưa gửi được: ' + (r && r.msg)); moDonCuaToi(); });
+      return;
+    }
     if (el.hasAttribute('data-huy-don')) {
       if (!confirm('Hủy đơn ' + el.getAttribute('data-huy-don') + '?')) return;
       api('capNhatDon', { ma: el.getAttribute('data-huy-don'), tt: 'huy' }, true).then(function (r) { toast(r && r.status === 'ok' ? 'Đã hủy đơn' : 'Không hủy được: ' + (r && r.msg)); moDonCuaToi(); });
@@ -1166,7 +1213,7 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden && !DEMO) kiemTraBanMoi(); });
   if (DEMO) {
     var sc = document.createElement('script');
-    sc.src = 'demo-data.js?v=4'; sc.onload = batDau;
+    sc.src = 'demo-data.js?v=5'; sc.onload = batDau;
     sc.onerror = function () { document.body.innerHTML = '<p style="padding:20px">Chưa cấu hình APPS_URL trong config.js.</p>'; };
     document.head.appendChild(sc);
   } else batDau();

@@ -57,11 +57,18 @@
     if (action === 'getAll') {
       var ds = sao(data);
       if (!sess) ds.forEach(function (x) { x.dl = 0; });
-      return tre({ status: 'ok', data: ds, anh: {}, luc: new Date().toISOString(), capNhat: '2026-11-05T08:00:00+07:00', daDangNhap: !!sess });
+      return tre({ status: 'ok', data: ds, anh: {}, luc: new Date().toISOString(), capNhat: '2026-11-05T08:00:00+07:00', daDangNhap: !!sess, chuaCfg: sess ? sao(chuaCfg) : [] });
     }
     if (action === 'getTonKho') {
       if (!sess) return tre({ status: 'error', msg: 'need_login' });
-      var t = sao(ton);
+      var t = sao(ton), giu = {};
+      donDemo.forEach(function (d) { if (['giu', 'xacnhan', 'danggiao'].indexOf(d.tt) >= 0) d.items.forEach(function (x) { giu[x.ma] = (giu[x.ma] || 0) + x.sl; }); });
+      Object.keys(giu).forEach(function (m) {
+        var d = t[m]; if (!d) return;
+        d.tonGoc = d.tong; d.giu = giu[m]; d.tong = Math.max(0, d.tong - giu[m]);
+        var con = giu[m]; ['nhanh', 'mai', 'cho'].forEach(function (k) { var b = Math.min(d.tier[k], con); d.tier[k] -= b; con -= b; });
+        if (sess.role === 'khachhang') { delete d.giu; delete d.tonGoc; }
+      });
       if (sess.role === 'khachhang') Object.keys(t).forEach(function (m) {
         var d = t[m], c = function (n) { return Math.min(n, 51); };
         t[m] = { tong: c(d.tong), dvt: d.dvt, tier: { nhanh: c(d.tier.nhanh), mai: c(d.tier.mai), cho: c(d.tier.cho) } };
@@ -89,28 +96,48 @@
         var dg = g.dl || g.ny, luong = m2 ? x.sl * m2 : x.sl, t = Math.round(luong * dg); tong += t;
         return { ma: g.ma, ten: g.ten, sl: x.sl, dv: m2 ? 'thùng' : g.dvt, qd: m2 ? (Math.round(luong * 100) / 100) + ' m²' : '', dongia: dg, tien: t };
       });
-      var ma = 'HN261105-' + ('00' + (donDemo.length + 1)).slice(-3);
+      var ma = 'HN261105-' + ('00' + (donDemo.length + 1)).slice(-3), chua = p.loai === 'chua', cfg = chuaCfg.filter(function (c) { return c.ngay === Number(p.soNgay); })[0];
+      if (chua && !cfg) return tre({ status: 'error', msg: 'Số ngày chừa không hợp lệ.' });
       donDemo.unshift({ ma: ma, ngay: new Date().toISOString(), tt: 'moi', user: sess.username, ten: p.tenKH, sdt: p.sdt, hinhThuc: p.hinhThuc === 'nhan' ? 'Nhận tại kho' : 'Giao tận nơi',
-        diaChi: p.diaChi, ngayCan: p.ngayCan, ghiChu: p.ghiChu, tong: tong, items: its, xuLy: '', ghiChuNB: '' });
+        diaChi: p.diaChi, ngayCan: p.ngayCan, ghiChu: p.ghiChu, tong: tong, items: its, xuLy: '', ghiChuNB: '',
+        loai: chua ? 'chua' : '', soNgay: chua ? cfg.ngay : 0, coc: chua && cfg.coc ? Math.round(tong * cfg.coc / 100000) * 1000 : 0, daCoc: 0, han: '', xinGH: 0 });
       return tre({ status: 'ok', ma: ma, tong: tong });
     }
     if (action === 'donCuaToi') return tre({ status: 'ok', data: sao(donDemo.filter(function (d) { return d.user === (sess && sess.username); })) });
     if (action === 'dsDon') {
       if (!sess || (sess.role !== 'admin' && sess.role !== 'nv')) return tre({ status: 'error', msg: 'forbidden' });
-      var dem = { moi: 0, xacnhan: 0, danggiao: 0, dagiao: 0, huy: 0, tuchoi: 0 };
-      donDemo.forEach(function (d) { dem[d.tt]++; });
-      return tre({ status: 'ok', data: sao(donDemo.filter(function (d) { return !p.tt || d.tt === p.tt; })), dem: dem });
+      var dem = { moi: 0, giu: 0, xacnhan: 0, danggiao: 0, dagiao: 0, huy: 0, tuchoi: 0, hetHan: 0, xinGH: 0 };
+      donDemo.forEach(function (d) { dem[d.tt]++; if (d.tt === 'giu' && d.han && new Date(d.han) < new Date()) dem.hetHan++; if (d.tt === 'giu' && d.xinGH) dem.xinGH++; });
+      return tre({ status: 'ok', data: sao(donDemo.filter(function (d) { return !p.tt || d.tt === p.tt; })), dem: dem, chuaCfg: sao(chuaCfg) });
     }
     if (action === 'capNhatDon') {
       var dd = donDemo.filter(function (d) { return d.ma === p.ma; })[0];
       if (!dd) return tre({ status: 'error', msg: 'Không thấy đơn' });
       if (sess.role !== 'admin' && !(dd.user === sess.username && p.tt === 'huy' && dd.tt === 'moi')) return tre({ status: 'error', msg: 'forbidden' });
-      dd.tt = p.tt; dd.xuLy = sess.username; if (p.ghiChuNB !== undefined) dd.ghiChuNB = p.ghiChuNB;
-      return tre({ status: 'ok', msg: 'Đã cập nhật' });
+      if (p.tt === 'giu' && dd.loai !== 'chua') return tre({ status: 'error', msg: 'Đơn này không phải yêu cầu chừa hàng.' });
+      var hanMoi = function (tu, n) { var x = new Date(tu.getTime() + n * 86400000); x.setHours(23, 59, 0, 0); return x.toISOString(); };
+      if (p.tt && p.tt !== dd.tt) { dd.tt = p.tt; if (p.tt === 'giu') dd.han = hanMoi(new Date(), dd.soNgay || 3); }
+      if (p.giaHan) { var tu = dd.han && new Date(dd.han) > new Date() ? new Date(dd.han) : new Date(); dd.han = hanMoi(tu, Number(p.giaHan)); dd.soNgay += Number(p.giaHan); dd.xinGH = 0; }
+      if (p.boXin) dd.xinGH = 0;
+      if (p.coc !== undefined && p.coc !== '') dd.coc = Number(p.coc) || 0;
+      if (p.daCoc !== undefined && p.daCoc !== '') dd.daCoc = Number(p.daCoc) || 0;
+      dd.xuLy = sess.username; if (p.ghiChuNB !== undefined) dd.ghiChuNB = p.ghiChuNB;
+      return tre({ status: 'ok', msg: 'Đã cập nhật' + (dd.tt === 'giu' && dd.han ? ' – giữ tới ' + new Date(dd.han).toLocaleDateString('vi-VN') : '') });
+    }
+    if (action === 'xinGiaHan') {
+      var dx = donDemo.filter(function (d) { return d.ma === p.ma && d.user === (sess && sess.username); })[0];
+      if (!dx || dx.tt !== 'giu') return tre({ status: 'error', msg: 'Chỉ xin gia hạn được đơn đang chừa hàng.' });
+      dx.xinGH = Number(p.soNgay) || 0;
+      return tre({ status: 'ok', msg: 'Đã gửi xin gia hạn ' + dx.xinGH + ' ngày – chờ công ty duyệt' });
     }
     return tre({ status: 'ok' });
   };
+  var chuaCfg = [{ ngay: 3, coc: 0 }, { ngay: 5, coc: 0 }, { ngay: 7, coc: 10 }, { ngay: 10, coc: 10 }, { ngay: 15, coc: 20 }, { ngay: 30, coc: 30 }];
+  var homQua = new Date(Date.now() - 86400000); homQua.setHours(23, 59, 0, 0);
   var donDemo = [
+    { ma: 'HN261029-003', ngay: '2026-10-29T10:05:00+07:00', tt: 'giu', user: 'daily', ten: 'Cửa hàng VLXD Mẫu', sdt: '0909000111', hinhThuc: 'Nhận tại kho', diaChi: '', ngayCan: '',
+      ghiChu: 'Giữ giúp cho công trình nhà anh Tâm', tong: 7000000, items: [{ ma: 'VS002', ten: 'Lavabo đặt bàn mẫu 2', sl: 2, dv: 'bộ', qd: '', dongia: 3500000, tien: 7000000 }],
+      xuLy: 'admin', ghiChuNB: '', loai: 'chua', soNgay: 7, han: homQua.toISOString(), coc: 700000, daCoc: 700000, xinGH: 0 },
     { ma: 'HN261104-007', ngay: '2026-11-04T09:12:00+07:00', tt: 'moi', user: 'daily', ten: 'Cửa hàng VLXD Minh Phát', sdt: '0909123456', hinhThuc: 'Giao tận nơi', diaChi: '12 Trần Hưng Đạo, Long Xuyên',
       ngayCan: '2026-11-08', ghiChu: 'Giao buổi sáng', tong: 9216000, items: [{ ma: 'GM600600003', ten: 'Gạch mẫu trơn 3', sl: 32, dv: 'thùng', qd: '46.08 m²', dongia: 200000, tien: 9216000 }], xuLy: '', ghiChuNB: '' },
     { ma: 'HN261103-004', ngay: '2026-11-03T15:40:00+07:00', tt: 'dagiao', user: 'daily2', ten: 'VLXD Hòa Bình', sdt: '0911222333', hinhThuc: 'Nhận tại kho', diaChi: '', ngayCan: '',

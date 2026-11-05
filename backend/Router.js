@@ -47,6 +47,8 @@ function xuLy(p) {
       case 'donCuaToi':  return ti ? donCuaToi(ti) : { status: 'error', msg: 'need_login' };
       case 'dsDon':      return ti && (ti.role === 'admin' || ti.role === 'nv') ? dsDon(p) : cam;
       case 'capNhatDon': return ti ? capNhatDon(p, ti) : { status: 'error', msg: 'need_login' };
+      // Chừa hàng (GĐ2)
+      case 'xinGiaHan':  return ti ? xinGiaHan(p, ti) : { status: 'error', msg: 'need_login' };
     }
     return { status: 'error', msg: 'Unknown action: ' + a };
   } catch (err) {

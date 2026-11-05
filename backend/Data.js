@@ -298,11 +298,14 @@ function getAll(ti) {
   var th = {};
   try { th = quaDem('th', function () { return docThuongHieu(gia.data); }, TAB.thuongHieu).data || {}; } catch (e) { }
   var capNhat = PropertiesService.getScriptProperties().getProperty('CAP_NHAT_GIA') || '';
-  return { status: 'ok', data: gia.data, anh: anh, thuongHieu: th, luc: gia.luc, capNhat: capNhat, daDangNhap: !!ti };
+  var chuaCfg = [];
+  if (ti) try { chuaCfg = docCaiChua(); } catch (e) { }
+  return { status: 'ok', data: gia.data, anh: anh, thuongHieu: th, luc: gia.luc, capNhat: capNhat, daDangNhap: !!ti, chuaCfg: chuaCfg };
 }
 
 function getTonKho(ti) {
   var res = quaDem('tonkho', docTonKho, function () { return layTabTon(false); }, CACHE_GIAY_TON);
+  if (res.status === 'ok') truHangGiu(res.data); // Được bán = Tồn − hàng đang giữ cho đơn / chừa hàng
   if (res.status !== 'ok' || ti.role !== 'khachhang') return res;
   // Đại lý: không gửi tên kho, số lô, số thật – mọi số chặn trần (app hiện "50+").
   var cap = function (n) { return Math.min(Number(n) || 0, TRAN_TON_KHACH); };

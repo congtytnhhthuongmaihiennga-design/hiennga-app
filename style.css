@@ -303,7 +303,7 @@ s.ny{font-size:12px;color:var(--t3);margin-left:6px}
 .don-cuoi b{color:var(--c);font-size:16px}
 .tt{font-size:11.5px;font-weight:800;padding:2px 9px;border-radius:999px;white-space:nowrap}
 .tt-moi{background:#FFF4DE;color:#9A5B00}.tt-xacnhan{background:#E3F2FD;color:#1565C0}.tt-danggiao{background:#EDE7F6;color:#5E35B1}
-.tt-dagiao{background:#E7F5EC;color:#1F7A3A}.tt-huy,.tt-tuchoi{background:#F1F3F4;color:#6B7280}
+.tt-dagiao{background:#E7F5EC;color:#1F7A3A}.tt-giu{background:#FDEBD3;color:#B45309}.tt-huy,.tt-tuchoi{background:#F1F3F4;color:#6B7280}
 
 /* ---------- Giỏ tem ---------- */
 .tem-hd{background:var(--c-nhat);border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.5}
@@ -384,3 +384,14 @@ body.che-xem main{padding:0 0 30px;max-width:720px}
 .xem-lh span{font-size:13px;color:var(--t2)}
 
 .toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%);background:rgba(20,24,36,.92);color:#fff;padding:10px 16px;border-radius:999px;font-size:13px;z-index:60;max-width:90vw;text-align:center}
+
+/* Chừa hàng (GĐ2) */
+.chua-box{background:var(--bg2);border-radius:12px;padding:10px 12px;margin-top:10px}
+.chua-box .chips{flex-wrap:wrap;overflow:visible}
+.chua-box .chip small{opacity:.75;font-weight:600}
+.chua-coc{margin:8px 0 2px;font-size:14px}.chua-coc b{color:#B45309}
+.chua-tt{display:flex;gap:6px;align-items:flex-start;margin-top:8px;padding:8px 10px;border-radius:10px;background:#FDF3E7;color:#7C3F00;font-size:13px;line-height:1.45}
+.chua-tt.het{background:#FDECEC;color:#B42318}
+.chua-tt svg{flex-shrink:0;margin-top:2px}
+.chua-xin{margin-top:8px}.chua-xin .chips{margin-top:4px}
+.ton-giu{display:flex;gap:6px;align-items:center;margin-top:8px;font-size:13px;color:#7C3F00;background:#FDF3E7;border-radius:10px;padding:7px 10px}
