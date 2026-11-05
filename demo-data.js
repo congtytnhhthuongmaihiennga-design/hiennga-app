@@ -55,6 +55,7 @@
 
   var TEN_QUYEN = { don: 'Duyệt đơn (xác nhận / từ chối / hủy)', giao: 'Kho & giao hàng (xuất kho, đang giao, đã giao)', chua: 'Duyệt chừa hàng / gia hạn / nhả hàng', coc: 'Ghi tiền cọc', ghichu: 'Ghi chú nội bộ', nhapgia: 'Nhập / sửa giá', nhapton: 'Nhập tồn kho (mở quyền sửa Sheet Tồn kho)', baocao: 'Xem báo cáo doanh số', nhatky: 'Xem nhật ký thao tác' };
   var gmailNV = {};
+  var TT_TEN = { moi: 'Mới – chờ duyệt', giu: 'Đang chừa hàng', xacnhan: 'Đã xác nhận', danggiao: 'Đang giao', dagiao: 'Đã giao', huy: 'Đã hủy', tuchoi: 'Từ chối' };
   var quyenNV = { nv: [] };
   function quyenCua(s) { return !s ? [] : s.role === 'admin' ? Object.keys(TEN_QUYEN) : s.role === 'nv' ? (quyenNV[s.username] || []) : []; }
   function coQ(s, q) { return quyenCua(s).indexOf(q) >= 0; }
@@ -134,7 +135,7 @@
       if (noiBo && p.tt && p.tt !== dd.tt && !coQ(sess, qTT)) return can(qTT);
       if (noiBo && (p.giaHan || p.boXin) && !coQ(sess, 'chua')) return can('chua');
       if (noiBo && p.ghiChuNB !== undefined && p.ghiChuNB !== dd.ghiChuNB && !coQ(sess, 'ghichu')) return can('ghichu');
-      ghiNK(sess, noiBo ? 'Cập nhật đơn' : 'Đại lý tự hủy đơn', dd.ma, (p.tt && p.tt !== dd.tt ? dd.tt + ' → ' + p.tt : '') + (p.giaHan ? ' gia hạn +' + p.giaHan + ' ngày' : ''));
+      ghiNK(sess, noiBo ? 'Cập nhật đơn' : 'Đại lý tự hủy đơn', dd.ma, (p.tt && p.tt !== dd.tt ? TT_TEN[dd.tt] + ' → ' + TT_TEN[p.tt] : '') + (p.giaHan ? ' gia hạn +' + p.giaHan + ' ngày' : ''));
       if (p.tt === 'giu' && dd.loai !== 'chua') return tre({ status: 'error', msg: 'Đơn này không phải yêu cầu chừa hàng.' });
       var hanMoi = function (tu, n) { var x = new Date(tu.getTime() + n * 86400000); x.setHours(23, 59, 0, 0); return x.toISOString(); };
       if (p.tt && p.tt !== dd.tt) { dd.tt = p.tt; if (p.tt === 'giu') dd.han = hanMoi(new Date(), dd.soNgay || 3); }
