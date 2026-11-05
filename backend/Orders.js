@@ -395,10 +395,11 @@ function baoKho(d) {
   var noiDung = dau.join('\n') + '\n\n' + d.items.map(function (x) { return '• ' + x.ma + ' – ' + x.sl + ' ' + x.dv + (x.qd ? ' (' + x.qd + ')' : ''); }).join('\n') + '\n\nMở đơn / báo đã giao: ' + link;
   baoQuanTri(tieuDe, noiDung, null, 'kho');
 }
+var TG_KQ = {}; // kết quả gửi Telegram lần gần nhất (để báo khi gửi thử)
 function guiTelegram(text, noi) {
-  var pr = PropertiesService.getScriptProperties(), tk = pr.getProperty('TELEGRAM_TOKEN');
+  var pr = PropertiesService.getScriptProperties(), tk = pr.getProperty('TELEGRAM_TOKEN'), ten = noi === 'kho' ? 'kho' : 'chinh';
   var khoa = noi === 'kho' ? 'TELEGRAM_CHAT_KHO' : 'TELEGRAM_CHAT', chat = pr.getProperty(khoa);
-  if (!tk || !chat) return false;
+  if (!tk || !chat) { TG_KQ[ten] = !tk ? '❌ chưa có mã bot' : '❌ chưa nối nhóm (chạy "Cài Telegram", bấm Yes ở bước cuối)'; return false; }
   var gui = function (id) {
     return UrlFetchApp.fetch('https://api.telegram.org/bot' + tk + '/sendMessage', {
       method: 'post', contentType: 'application/json', muteHttpExceptions: true,
@@ -406,12 +407,13 @@ function guiTelegram(text, noi) {
     });
   };
   var r = gui(chat);
-  if (r.getResponseCode() === 200) return true;
+  if (r.getResponseCode() === 200) { TG_KQ[ten] = '✅ đã gửi'; return true; }
   // Nhóm thường được Telegram nâng lên "siêu nhóm" -> đổi Chat ID: tự cập nhật rồi gửi lại.
   try {
     var moi = ((JSON.parse(r.getContentText() || '{}').parameters) || {}).migrate_to_chat_id;
-    if (moi) { pr.setProperty(khoa, String(moi)); return gui(String(moi)).getResponseCode() === 200; }
+    if (moi) { pr.setProperty(khoa, String(moi)); var ok2 = gui(String(moi)).getResponseCode() === 200; TG_KQ[ten] = ok2 ? '✅ đã gửi' : '❌ lỗi gửi'; return ok2; }
   } catch (e) { }
+  try { TG_KQ[ten] = '❌ lỗi: ' + (JSON.parse(r.getContentText()).description || r.getResponseCode()); } catch (e) { TG_KQ[ten] = '❌ lỗi ' + r.getResponseCode(); }
   return false;
 }
 
@@ -479,5 +481,8 @@ function thuBaoDon() {
   var mau = { ma: 'THU-000', ten: 'Đơn thử', sdt: '0900000000', hinhThuc: 'Giao tận nơi', diaChi: 'Địa chỉ thử', ngayCan: '', ghiChu: 'Đây là tin thử', tong: 1000000,
     items: [{ ma: 'GHT.BC6600T', ten: 'Gạch thử', sl: 2, dv: 'thùng', qd: '2.88 m²', dongia: 347222, tien: 1000000 }] };
   baoDonMoi(mau); baoKho(mau);
-  SpreadsheetApp.getUi().alert('Đã gửi thử.\nĐơn mới → ' + (emailNhan('chinh') || '(chưa có email)') + ' + Telegram nhóm chính (nếu đã nối)\nKho → ' + (emailNhan('kho') || '(chưa có email)') + ' + Telegram nhóm kho (nếu đã nối)');
+  var ui = SpreadsheetApp.getUi();
+  ui.alert('Kết quả gửi thử',
+    'ĐƠN MỚI\n  Email: ' + (emailNhan('chinh') || '(chưa có email)') + '\n  Telegram nhóm chính: ' + (TG_KQ.chinh || '—') +
+    '\n\nKHO (không bắt buộc)\n  Email: ' + (emailNhan('kho') || '(chưa có)') + '\n  Telegram nhóm kho: ' + (TG_KQ.kho || 'chưa nối'), ui.ButtonSet.OK);
 }
