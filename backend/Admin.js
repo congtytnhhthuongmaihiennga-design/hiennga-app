@@ -4,6 +4,7 @@
 
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('📱 App')
+    .addItem('0. Cấp quyền cho app (Email, Telegram, nhắc hạn)', 'capQuyen')
     .addItem('1. Khởi tạo các tab (chỉ tạo tab còn thiếu)', 'khoiTaoSheet')
     .addItem('2. Bật tự làm mới mỗi 15 phút', 'caiLamMoiTuDong')
     .addSeparator()
@@ -141,4 +142,16 @@ function kiemTraDuLieu() {
     }
   } catch (e) { dong.push('❌ Tồn kho: ' + e.message); }
   SpreadsheetApp.getUi().alert(dong.join('\n'));
+}
+
+// Cấp lại quyền: Google cho bỏ tick từng quyền khi đồng ý -> thiếu quyền "kết nối dịch vụ bên ngoài"
+// thì Telegram không chạy. Mục này bắt Google hỏi lại MỌI quyền còn thiếu, rồi thử từng quyền.
+function capQuyen() {
+  if (ScriptApp.requireAllScopes) ScriptApp.requireAllScopes(ScriptApp.AuthMode.FULL);
+  var kq = [];
+  try { UrlFetchApp.fetch('https://api.telegram.org', { muteHttpExceptions: true }); kq.push('✅ Kết nối Telegram'); } catch (e) { kq.push('❌ Kết nối Telegram: ' + e.message); }
+  try { kq.push('✅ Gửi email (còn ' + MailApp.getRemainingDailyQuota() + ' email hôm nay)'); } catch (e) { kq.push('❌ Gửi email: ' + e.message); }
+  try { ScriptApp.getProjectTriggers(); kq.push('✅ Hẹn giờ (nhắc chừa hàng 7h sáng)'); } catch (e) { kq.push('❌ Hẹn giờ: ' + e.message); }
+  try { if (SHEET_TON_RIENG()) { ssTon().getName(); kq.push('✅ Mở Sheet Tồn kho'); } } catch (e) { kq.push('❌ Sheet Tồn kho: ' + e.message); }
+  SpreadsheetApp.getUi().alert('Kiểm tra quyền', kq.join('\n'), SpreadsheetApp.getUi().ButtonSet.OK);
 }

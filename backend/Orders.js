@@ -431,6 +431,7 @@ function caiEmail() {
 // Nối Telegram vào NHÓM CHAT: thêm bot vào nhóm, gõ /start trong nhóm, rồi chạy mục này.
 function caiTelegram() {
   var ui = SpreadsheetApp.getUi(), pr = PropertiesService.getScriptProperties();
+  if (ScriptApp.requireAllScopes) ScriptApp.requireAllScopes(ScriptApp.AuthMode.FULL); // hỏi lại quyền còn thiếu
   var cu = pr.getProperty('TELEGRAM_TOKEN');
   var a = ui.prompt('Telegram – bước 1/3: mã bot', 'Dán mã bot (token) do @BotFather cấp, dạng 123456:ABC…' + (cu ? '\nĐã có mã bot – để trống = dùng mã cũ.' : ''), ui.ButtonSet.OK_CANCEL);
   if (a.getSelectedButton() !== ui.Button.OK) return;
