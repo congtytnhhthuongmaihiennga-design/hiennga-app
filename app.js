@@ -132,6 +132,12 @@
   function nhomTheoKey(k) { return dsNhom().filter(function (g) { return g.key === k; })[0] || NHOM_ALL; }
 
   // ---------- Dữ liệu ----------
+  // "60 x 60", "60X60", "60×60cm" -> "60x60" (để lọc gộp đúng); số thập phân giữ dấu chấm.
+  function chuanKc(s) {
+    var m = String(s || '').replace(/,/g, '.').match(/(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)(?:\s*[x×*]\s*(\d+(?:\.\d+)?))?/i);
+    return m ? m[1] + 'x' + m[2] + (m[3] ? 'x' + m[3] : '') : String(s || '').trim();
+  }
+  function dienTichKc(s) { var m = String(s).match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)/); return m ? Number(m[1]) * Number(m[2]) : 0; }
   // Tên vật tư từ phần mềm kho có ký hiệu phụ: "(8v/th)" (đã hiện ở Đóng gói), "@", "**", "#1".
   function tenGon(t) {
     return String(t || '').replace(/\(\s*\d+\s*v\s*\/\s*th\s*\)/gi, '').replace(/#\d+\s*$/, '')
@@ -148,6 +154,9 @@
       p._cap = (goc.match(/lo[aạ]i\s*(\d)/i) || [])[1] || ''; // cấp gạch: Loại 1 / 2 / 3
       // Số viên/thùng bỏ khỏi tên nhưng vẫn hiện ở dòng nhỏ – có mã chỉ khác nhau ở điểm này.
       p._vt = (goc.match(/\(\s*(\d+)\s*v\s*\/\s*th/i) || [])[1] || '';
+      // Kích thước: cột "Kích cỡ" trong Sheet; trống thì đọc từ tên ("Đá 5x20", "Mosaic 30.6x30.6").
+      var kt = goc.match(/(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)/i);
+      p._kc = chuanKc(p.kc || (kt ? kt[1] + 'x' + kt[2] : ''));
       p._tk = norm([p.ma, p.ten, p.tenGoc, p.hang, p.hang ? tenHang(p.hang) : '', p.kc, p.loai, p.mau, p.nhom].join(' '));
       return p;
     });
@@ -255,7 +264,7 @@
     });
   }
   function giaTriCot(p, k) {
-    var v = p[k] || '';
+    var v = (k === 'kc' ? p._kc : p[k]) || '';
     if (!v) return [];
     return COT_NHIEU_GIA_TRI[k] ? v.split(/[,;]/).map(function (x) { return x.trim(); }).filter(String) : [v];
   }
@@ -473,7 +482,22 @@
         return '<button type="button" class="chip' + (l ? ' chip-logo' : '') + (S.hang === h ? ' on' : '') + '" data-hang="' + esc(h) + '">' +
           (l ? '<img src="' + esc(l) + '" alt="' + esc(h) + '">' : esc(tenHang(h))) + ' <small>' + hang[h] + '</small></button>';
       }).join('');
-    $('main').innerHTML = '<div class="loc-bar"><div class="chips">' + chips + '</div></div>' + goiYDangNhap() + '<div id="list-kq">' + htmlKetQuaDS() + '</div>';
+    $('main').innerHTML = '<div class="loc-bar"><div class="chips">' + chips + '</div>' + thanhKichThuoc() + '</div>' + goiYDangNhap() + '<div id="list-kq">' + htmlKetQuaDS() + '</div>';
+    // Nút kích thước đang chọn: cuộn ngang cho thấy (không cuộn cả trang).
+    var on = document.querySelector('.kt-bar .chip-kt.on');
+    if (on && on.parentNode) on.parentNode.scrollLeft = Math.max(0, on.offsetLeft - on.parentNode.offsetLeft - 40);
+  }
+  // Thanh lọc kích thước (gạch, đá…): cỡ nhiều mã nhất đứng trước (30x60, 60x60…), kèm số mã. Bấm lại lần nữa = bỏ lọc.
+  function thanhKichThuoc() {
+    var dem = {};
+    dsCoSo().forEach(function (p) { if (p._kc) dem[p._kc] = (dem[p._kc] || 0) + 1; });
+    var ds = Object.keys(dem);
+    if (ds.length < 3) return '';
+    ds.sort(function (a, b) { return dem[b] - dem[a] || dienTichKc(b) - dienTichKc(a); });
+    return '<div class="kt-bar"><span class="kt-nhan">' + ic('gach', 'ic-sm') + 'Kích thước</span><div class="chips">' +
+      '<button type="button" class="chip chip-kt' + (S.loc.kc ? '' : ' on') + '" data-loc-kc="">Tất cả</button>' +
+      ds.map(function (k) { return '<button type="button" class="chip chip-kt' + (S.loc.kc === k ? ' on' : '') + '" data-loc-kc="' + esc(k) + '">' + esc(k.replace(/x/g, '×')) + ' <small>' + dem[k] + '</small></button>'; }).join('') +
+      '</div></div>';
   }
   function htmlKetQuaDS() {
     if (!S.items.length) return S.dangTai ? khungTai() : '<div class="trong">' + ic('tag') + '<b>Chưa có bảng giá</b></div>';
@@ -537,7 +561,7 @@
     html += '<h2 class="ct-ten">' + esc(p._ten) + '</h2>' +
       '<button type="button" class="ct-ma" data-act="chep-ma" data-ma="' + esc(p.ma) + '" title="Chép mã">Mã SP: <b>' + esc(p.ma) + '</b>' + ic('copy', 'ic-sm') + '</button>' +
       '<div class="ct-tags">' + (p.hang ? (logoHang(p.hang) ? '<span class="tag hang-logo"><img src="' + esc(logoHang(p.hang)) + '" alt="' + esc(p.hang) + '"></span>' : '<span class="tag hang">' + esc(tenHang(p.hang)) + '</span>') : '') + nhanCap(p) + '<span class="tag">' + esc(g.ten) + '</span>' +
-      [p.kc, p.loai].filter(String).map(function (t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('') + '</div>';
+      [p._kc, p.loai].filter(String).map(function (t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('') + '</div>';
 
     // Giá
     var dv = p.dvt ? '<span class="dvt"> /' + esc(p.dvt) + '</span>' : '';
@@ -561,7 +585,7 @@
     }
 
     // Thông tin
-    var tt = [['Hãng', p.hang], ['Nhóm hàng', p.nhom], ['Kích cỡ / Quy cách', p.kc], ['Loại', p.loai], ['Đơn vị', p.dvt], ['Đóng gói', p.dg],
+    var tt = [['Hãng', p.hang], ['Nhóm hàng', p.nhom], ['Kích cỡ / Quy cách', p._kc], ['Loại', p.loai], ['Đơn vị', p.dvt], ['Đóng gói', p.dg],
       ['Màu', p.mau], ['Công năng', p.congNang], ['Tính năng', p.tinhNang], ['Hoa văn', p.hoaVan], ['Men / bề mặt', p.men], ['Dung tích', p.dungTich], ['Ghi chú', p.gc]]
       .filter(function (r) { return r[1]; });
     if (tt.length) html += '<div class="sec">Thông tin</div><div class="box"><table class="tt">' + tt.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>';
@@ -630,7 +654,7 @@
   }
   function baoGia(p) {
     // Báo giá gửi khách: chỉ giá niêm yết, không lộ giá đại lý.
-    return [p._ten + ' (mã ' + p.ma + ')', p.hang ? 'Hãng: ' + p.hang : '', p.kc ? 'Quy cách: ' + p.kc : '',
+    return [p._ten + ' (mã ' + p.ma + ')', p.hang ? 'Hãng: ' + p.hang : '', p._kc ? 'Quy cách: ' + p._kc : '',
       'Giá niêm yết: ' + tien(p.ny) + (p.ny > 0 && p.dvt ? '/' + p.dvt : ''), location.origin + location.pathname + '#sp=' + encodeURIComponent(p.ma),
       (CFG.TEN_DAY_DU || '') + (sdt() ? ' · ' + sdtDep() : '')].filter(String).join('\n');
   }
@@ -805,10 +829,10 @@
     var noi = lon
       ? '<div class="t-dau">' + logo + '<div class="t-ten">' + esc(p._ten) + '</div>' + qr + '</div>' +
         '<div class="t-dong"><span>Mã số / Code:</span><b class="t-ke">' + esc(p.ma) + '</b></div>' +
-        '<div class="t-dong"><span>Kích thước:</span><b class="t-ke">' + esc(p.kc || '—') + '</b>' + (p._vt ? '<span class="t-phu">' + p._vt + ' viên/thùng</span>' : '') + (p._cap ? '<span class="t-cap">Loại ' + p._cap + '</span>' : '') + '</div>' +
+        '<div class="t-dong"><span>Kích thước:</span><b class="t-ke">' + esc(p._kc || '—') + '</b>' + (p._vt ? '<span class="t-phu">' + p._vt + ' viên/thùng</span>' : '') + (p._cap ? '<span class="t-cap">Loại ' + p._cap + '</span>' : '') + '</div>' +
         '<div class="t-dong t-gia-dong"><span>Giá đã gồm VAT:</span><b class="t-ke t-gia">' + giaTemChu(it) + '</b><span class="t-dv">' + (giaTem(it) > 0 ? esc(dv) : '') + '</span></div>' +
         '<div class="t-chan">' + esc(CFG.TEN_APP || '') + ' · Quét mã QR xem mẫu · In ' + ngayIn + '</div>'
-      : '<div class="t-nho-trai">' + logo + '<div class="t-ten">' + esc(p._ten) + '</div><div class="t-ma">' + esc(p.ma) + (p.kc ? ' · ' + esc(p.kc) : '') + '</div>' +
+      : '<div class="t-nho-trai">' + logo + '<div class="t-ten">' + esc(p._ten) + '</div><div class="t-ma">' + esc(p.ma) + (p._kc ? ' · ' + esc(p._kc) : '') + '</div>' +
         '<div class="t-gia">' + giaTemChu(it) + '<small>' + (giaTem(it) > 0 ? esc(dv) : '') + '</small></div></div>' + qr;
     return '<div class="tem-o" style="width:' + kho.w + 'mm;height:' + kho.h + 'mm"><div class="tem ' + (lon ? 'tem-lon' : 'tem-nho') + '" style="width:' + bw + 'mm;height:' + bh + 'mm;transform:scale(' + tl + ')">' + noi + '</div></div>';
   }
@@ -826,7 +850,14 @@
     // Lần đầu: liên hệ trên trang QR lấy theo tài khoản đang đăng nhập (đại lý = cửa hàng của họ).
     if (cfg.tenCH === undefined && S.sess) { cfg.tenCH = S.sess.tenCty || S.sess.name || ''; cfg.sdtCH = S.sess.sdt || ''; luuTem(); }
     var kho = khoTem(), tong = danhSachTemIn().length, doi = maDoiGia();
-    var html = dauSheet('Giỏ in tem giá') + '<div class="sh-body">';
+    var html = dauSheet('Giỏ in tem giá') + '<div class="sh-body">' +
+      '<details class="tem-hd"' + (S.gioTem.length ? '' : ' open') + '><summary>Cách in tem</summary><ol>' +
+      '<li>Thêm mã: mở sản phẩm → nút 🏷, hoặc ở danh sách bấm <b>"In tem cả danh sách"</b>, hoặc gõ mã ở ô bên dưới.</li>' +
+      '<li>Chọn <b>khổ tem</b> đúng giấy của máy in (hoặc "Tự nhập kích thước").</li>' +
+      '<li>Kiểm tra <b>tên cửa hàng + số điện thoại</b> – khách quét QR sẽ thấy số này.</li>' +
+      '<li>Sửa <b>giá in</b> nếu muốn (chỉ in ra tem, không đổi giá trên hệ thống) và <b>số tem</b> mỗi mã.</li>' +
+      '<li>Bấm <b>In</b> → chọn máy in tem, khổ giấy = khổ tem, lề = Không, tỉ lệ 100%. Điện thoại / máy in Bluetooth: chọn <b>Lưu PDF</b> rồi mở bằng app của máy in.</li>' +
+      '<li>Giá thay đổi: giỏ tem tự báo mã cần in lại.</li></ol></details>';
     if (doi.length) html += '<div class="tem-canh">' + ic('refresh', 'ic-sm') + '<span>' + doi.length + ' mã đã đổi giá so với tem in trước</span><button type="button" class="btn btn-chinh btn-nho" data-act="tem-doi-gia">Thêm vào giỏ</button></div>';
     html += '<div class="sec">Khổ tem</div><div class="chips wrap">' + Object.keys(KHO_TEM).map(function (k) {
       return '<button type="button" class="chip' + (cfg.kho === k ? ' on' : '') + '" data-tem-kho="' + k + '">' + KHO_TEM[k].ten + '</button>';
@@ -882,14 +913,14 @@
     if (!p) { $('main').innerHTML = S.items.length ? '<div class="trong">' + ic('search') + '<b>Không tìm thấy mã ' + esc(S.xem) + '</b></div>' : khungTai(); return; }
     document.title = p._ten;
     var anh = anhCua(p.ma), idx = Math.min(S.anhIdx || 0, Math.max(anh.length - 1, 0)), lg = p.hang ? logoHang(p.hang) : '';
-    var tt = [['Hãng', p.hang ? tenHang(p.hang) : ''], ['Mã sản phẩm', p.ma], ['Kích cỡ / Quy cách', p.kc], ['Loại', p.loai], ['Đóng gói', p.dg], ['Màu', p.mau], ['Công năng', p.congNang],
+    var tt = [['Hãng', p.hang ? tenHang(p.hang) : ''], ['Mã sản phẩm', p.ma], ['Kích cỡ / Quy cách', p._kc], ['Loại', p.loai], ['Đóng gói', p.dg], ['Màu', p.mau], ['Công năng', p.congNang],
       ['Tính năng', p.tinhNang], ['Hoa văn', p.hoaVan], ['Men / bề mặt', p.men], ['Dung tích', p.dungTich]].filter(function (r) { return r[1]; });
     var dt = String(S.xemDT || '').replace(/[^\d+]/g, '');
     var html = '<div class="xem">' +
       '<div class="anh-o xem-anh' + (anh.length ? '' : ' chua-anh') + '">' + (anh.length ? '<img class="anh" alt="" src="' + esc(coAnh(anh[idx], 1400)) + '" data-icon="' + iconNhom(p) + '">' : ic(iconNhom(p))) +
       (anh.length > 1 ? '<button type="button" class="anh-nav trai" data-anh="-1" aria-label="Ảnh trước">' + ic('chevL') + '</button><button type="button" class="anh-nav phai" data-anh="1" aria-label="Ảnh sau">' + ic('chevR') + '</button><span class="anh-so">' + (idx + 1) + '/' + anh.length + '</span>' : '') + '</div>' +
       '<div class="xem-than">' + (lg ? '<img class="xem-logo" src="' + esc(lg) + '" alt="">' : '') +
-      '<h1 class="ct-ten">' + esc(p._ten) + '</h1><div class="ct-tags">' + nhanCap(p) + (p.kc ? '<span class="tag">' + esc(p.kc) + '</span>' : '') + '</div>' +
+      '<h1 class="ct-ten">' + esc(p._ten) + '</h1><div class="ct-tags">' + nhanCap(p) + (p._kc ? '<span class="tag">' + esc(p._kc) + '</span>' : '') + '</div>' +
       (tt.length ? '<div class="box" style="margin-top:14px"><table class="tt">' + tt.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>' : '') +
       (S.xemCH || dt ? '<div class="xem-lh"><div><small>Liên hệ mua hàng</small><b>' + esc(S.xemCH || '') + '</b>' + (dt ? '<span>' + esc(dt) + '</span>' : '') + '</div>' +
         (dt ? '<a class="lh-btn lh-zalo" href="https://zalo.me/' + dt + '" target="_blank" rel="noopener">' + ic('chat', 'ic-sm') + 'Zalo</a><a class="lh-btn lh-goi" href="tel:' + dt + '">' + ic('phone', 'ic-sm') + 'Gọi</a>' : '') + '</div>' : '') +
@@ -899,7 +930,7 @@
 
   // ---------- Bấm (một chỗ xử lý cho cả app) ----------
   document.addEventListener('click', function (e) {
-    var el = e.target.closest('[data-act],[data-sp],[data-nhom],[data-nav],[data-hang],[data-hang-home],[data-loc],[data-sort],[data-anh],[data-user],[data-tem-kho],[data-tem-sl]');
+    var el = e.target.closest('[data-act],[data-sp],[data-nhom],[data-nav],[data-hang],[data-hang-home],[data-loc],[data-sort],[data-anh],[data-user],[data-tem-kho],[data-tem-sl],[data-loc-kc]');
     var menu = $('acct-menu');
     if (!menu.hidden && !e.target.closest('#acct-menu') && !(el && el.getAttribute('data-act') === 'menu')) menu.hidden = true;
     if (!el) { if (e.target.id === 'sheet-nen') dongSheet(); return; }
@@ -909,6 +940,7 @@
     if (el.hasAttribute('data-nav')) return diToi(el.getAttribute('data-nav'), '');
     if (el.hasAttribute('data-hang-home')) return diToi('all', el.getAttribute('data-hang-home'));
     if (el.hasAttribute('data-hang')) { S.hang = el.getAttribute('data-hang'); S.trang = 1; S.loc = {}; var hh = docHash(); hh.h = S.hang; ghiHash(hh, true); veTrang(); return; }
+    if (el.hasAttribute('data-loc-kc')) { var kc = el.getAttribute('data-loc-kc'); S.loc.kc = S.loc.kc === kc ? '' : kc; S.trang = 1; veTrang(); return; }
     if (el.hasAttribute('data-tem-kho')) { S.temCfg.kho = el.getAttribute('data-tem-kho'); luuTem(); moGioTem(); return; }
     if (el.hasAttribute('data-tem-sl')) {
       var ti = S.gioTem[Number(el.getAttribute('data-tem-sl'))];
