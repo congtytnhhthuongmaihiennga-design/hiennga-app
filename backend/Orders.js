@@ -434,16 +434,30 @@ function caiTelegram() {
   var cu = pr.getProperty('TELEGRAM_TOKEN');
   var a = ui.prompt('Telegram – bước 1/3: mã bot', 'Dán mã bot (token) do @BotFather cấp, dạng 123456:ABC…' + (cu ? '\nĐã có mã bot – để trống = dùng mã cũ.' : ''), ui.ButtonSet.OK_CANCEL);
   if (a.getSelectedButton() !== ui.Button.OK) return;
-  var tk = a.getResponseText().trim() || cu;
+  // Lấy đúng mã dạng 123456789:AAx… dù dán cả đoạn tin của BotFather / thừa dấu cách.
+  var dan = a.getResponseText().replace(/\s+/g, ''), tim = dan.match(/\d{6,}:[A-Za-z0-9_-]{30,}/);
+  var tk = tim ? tim[0] : (dan || cu);
   if (!tk) { ui.alert('Chưa có mã bot.'); return; }
+  // Kiểm tra mã bot NGAY (trước khi hỏi nhóm).
+  var me = {}, loiMang = '';
+  try { me = JSON.parse(UrlFetchApp.fetch('https://api.telegram.org/bot' + tk + '/getMe', { muteHttpExceptions: true }).getContentText() || '{}'); }
+  catch (e) { loiMang = e.message; }
+  if (loiMang) { ui.alert('Không gọi được Telegram: ' + loiMang); return; }
+  if (!me.ok) {
+    ui.alert('Telegram không nhận mã bot này' + (me.description ? ' (' + me.description + ')' : '') + '.\n\n' +
+      'Thường do: dán mã CŨ sau khi đã /revoke, hoặc chép thiếu ký tự.\nVào @BotFather gõ /token → chọn bot → chép mã mới nhất rồi chạy lại.\n\n' +
+      'Mã vừa nhận: ' + tk.slice(0, 6) + '…' + tk.slice(-4) + ' (' + tk.length + ' ký tự)');
+    return;
+  }
   var b = ui.prompt('Telegram – bước 2/3: nhóm nào?', 'Gõ 1 = NHÓM CHÍNH (đơn mới, chừa hàng, nhắc hạn)\nGõ 2 = NHÓM KHO (đơn đã duyệt cần xuất giao)', ui.ButtonSet.OK_CANCEL);
   if (b.getSelectedButton() !== ui.Button.OK) return;
   var kho = b.getResponseText().trim() === '2';
   var c = ui.alert('Telegram – bước 3/3', 'Trên Telegram:\n1. Thêm bot vào nhóm chat ' + (kho ? 'KHO' : 'CHÍNH') + '.\n2. Trong nhóm gõ: /start\n3. Quay lại đây bấm OK.', ui.ButtonSet.OK_CANCEL);
   if (c !== ui.Button.OK) return;
   var res = {};
-  try { res = JSON.parse(UrlFetchApp.fetch('https://api.telegram.org/bot' + tk + '/getUpdates', { muteHttpExceptions: true }).getContentText() || '{}'); } catch (e) { }
-  if (!res.ok) { ui.alert('Mã bot không đúng – kiểm tra lại với @BotFather.'); return; }
+  try { res = JSON.parse(UrlFetchApp.fetch('https://api.telegram.org/bot' + tk + '/getUpdates', { muteHttpExceptions: true }).getContentText() || '{}'); }
+  catch (e) { ui.alert('Không gọi được Telegram: ' + e.message); return; }
+  if (!res.ok) { ui.alert('Telegram báo lỗi: ' + (res.description || 'không rõ') + '. Chạy lại mục này sau ít phút.'); return; }
   // Tìm nhóm gần nhất bot thấy (tin nhắn /start hoặc lúc được thêm vào nhóm).
   var nhom = null, rieng = null;
   (res.result || []).forEach(function (u) {
