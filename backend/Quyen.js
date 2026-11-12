@@ -10,6 +10,7 @@ var QUYEN = {
   coc: 'Ghi tiền cọc',
   ghichu: 'Ghi chú nội bộ',
   nhapgia: 'Nhập / sửa giá',
+  sanpham: 'Thêm / sửa sản phẩm (mã mới, thông tin, ảnh)',
   nhapton: 'Nhập tồn kho (mở quyền sửa Sheet Tồn kho)',
   baocao: 'Xem báo cáo doanh số',
   nhatky: 'Xem nhật ký thao tác'

@@ -55,6 +55,8 @@ function xuLy(p) {
       case 'nhatKy':     return ti && (ti.role === 'admin' || ti.role === 'nv') && (p.maDon || coQuyen(ti, 'nhatky')) ? nhatKy(p) : cam;
       case 'baoCao':     return coQuyen(ti, 'baocao') ? baoCao(p) : cam;
       case 'suaGia':     return coQuyen(ti, 'nhapgia') ? suaGia(p, ti) : cam;
+      case 'docSanPham': return coQuyen(ti, 'sanpham') ? docSanPham(p) : cam;
+      case 'luuSanPham': return coQuyen(ti, 'sanpham') ? luuSanPham(p, ti) : cam;
       case 'thongTinTon': return coQuyen(ti, 'nhapton') ? thongTinTon() : cam;
       case 'lamMoiTon':  return coQuyen(ti, 'nhapton') ? lamMoiTon(ti) : cam;
     }

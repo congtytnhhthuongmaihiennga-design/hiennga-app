@@ -53,7 +53,7 @@
   function sao(o) { return JSON.parse(JSON.stringify(o)); }
   function tre(v) { return new Promise(function (ok) { setTimeout(function () { ok(v); }, 350); }); }
 
-  var TEN_QUYEN = { don: 'Duyệt đơn (xác nhận / từ chối / hủy)', giao: 'Kho & giao hàng (xuất kho, đang giao, đã giao)', chua: 'Duyệt chừa hàng / gia hạn / nhả hàng', coc: 'Ghi tiền cọc', ghichu: 'Ghi chú nội bộ', nhapgia: 'Nhập / sửa giá', nhapton: 'Nhập tồn kho (mở quyền sửa Sheet Tồn kho)', baocao: 'Xem báo cáo doanh số', nhatky: 'Xem nhật ký thao tác' };
+  var TEN_QUYEN = { don: 'Duyệt đơn (xác nhận / từ chối / hủy)', giao: 'Kho & giao hàng (xuất kho, đang giao, đã giao)', chua: 'Duyệt chừa hàng / gia hạn / nhả hàng', coc: 'Ghi tiền cọc', ghichu: 'Ghi chú nội bộ', nhapgia: 'Nhập / sửa giá', sanpham: 'Thêm / sửa sản phẩm (mã mới, thông tin, ảnh)', nhapton: 'Nhập tồn kho (mở quyền sửa Sheet Tồn kho)', baocao: 'Xem báo cáo doanh số', nhatky: 'Xem nhật ký thao tác' };
   var gmailNV = {};
   var TT_TEN = { moi: 'Mới – chờ duyệt', giu: 'Đang chừa hàng', xacnhan: 'Đã xác nhận', danggiao: 'Đang giao', dagiao: 'Đã giao', huy: 'Đã hủy', tuchoi: 'Từ chối' };
   var quyenNV = { nv: [] };
@@ -172,6 +172,20 @@
       if (p.ny) gg.ny = Number(p.ny); if (p.dl) gg.dl = Number(p.dl);
       ghiNK(sess, 'Sửa giá', '', p.ma + ': NY ' + gg.ny + ' · ĐL ' + gg.dl);
       return tre({ status: 'ok', msg: 'Đã lưu giá ' + p.ma + ' (thử)' });
+    }
+    if (action === 'docSanPham' || action === 'luuSanPham') {
+      if (!coQ(sess, 'sanpham')) return tre({ status: 'error', msg: 'forbidden' });
+      var sp = data.filter(function (x) { return x.ma.toUpperCase() === String(p.ma).toUpperCase(); })[0];
+      if (action === 'docSanPham') return tre(sp ? { status: 'ok', data: Object.assign({ tenHien: '', an: false, anh: '', maKho: '' }, sao(sp), { ten: sp.ten }) } : { status: 'error', msg: 'Không thấy mã ' + p.ma });
+      var f = p.f || {};
+      if (p.moi) {
+        if (sp) return tre({ status: 'error', msg: 'Mã ' + p.ma + ' đã có trong bảng giá – dùng "Sửa".' });
+        sp = { ma: p.ma, hang: '', nhom: '', ten: '', kc: '', loai: '', dvt: '', dg: '', ny: 0, dl: 0 }; data.push(sp);
+      } else if (!sp) return tre({ status: 'error', msg: 'Không thấy mã ' + p.ma });
+      Object.keys(f).forEach(function (k) { sp[k] = k === 'ny' || k === 'dl' ? Number(f[k]) || 0 : f[k]; });
+      if (f.tenHien) sp.ten = f.tenHien;
+      ghiNK(sess, p.moi ? 'Thêm sản phẩm' : 'Sửa sản phẩm', '', p.ma + ': ' + Object.keys(f).join(', '));
+      return tre({ status: 'ok', msg: (p.moi ? 'Đã thêm mã ' : 'Đã lưu mã ') + p.ma + ' (thử)' });
     }
     if (action === 'thongTinTon') return tre(coQ(sess, 'nhapton') ? { status: 'ok', link: 'https://docs.google.com/spreadsheets/', tab: 'TỒN TỔNG HỢP (thử)', luc: '✅ App đã đọc (dữ liệu thử)' } : { status: 'error', msg: 'forbidden' });
     if (action === 'lamMoiTon') return tre(coQ(sess, 'nhapton') ? { status: 'ok', msg: 'App sẽ đọc tồn kho mới ở lần tải tới (thử)' } : { status: 'error', msg: 'forbidden' });
