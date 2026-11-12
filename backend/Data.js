@@ -213,7 +213,7 @@ function docTonKho() {
     if (!d) {
       var dvtGoc = c.dvt === undefined ? '' : chu(r[c.dvt]);
       var qc = quyCachThung(dvtGoc, c.ten === undefined ? '' : r[c.ten]);
-      d = data[ma] = { tong: 0, dvt: qc ? 'thùng' : tenDonVi(dvtGoc), tier: { nhanh: 0, mai: 0, cho: 0 }, kho: {} };
+      d = data[ma] = { tong: 0, dvt: qc ? 'thùng' : tenDonVi(dvtGoc), tier: { nhanh: 0, mai: 0, cho: 0 }, kho: {}, ten: c.ten === undefined ? '' : chu(r[c.ten]) }; // ten = Tên vật tư trong Sheet Tồn kho (đại lý không nhận)
       if (qc) { d.vt = qc.vt; d.m2 = qc.m2; }
     }
     d.tong = lam3(d.tong + sl); d.tier[nhom] = lam3(d.tier[nhom] + sl);
