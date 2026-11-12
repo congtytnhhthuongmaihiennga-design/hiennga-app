@@ -187,6 +187,23 @@
       ghiNK(sess, p.moi ? 'Thêm sản phẩm' : 'Sửa sản phẩm', '', p.ma + ': ' + Object.keys(f).join(', '));
       return tre({ status: 'ok', msg: (p.moi ? 'Đã thêm mã ' : 'Đã lưu mã ') + p.ma + ' (thử)' });
     }
+    if (action === 'maKhoThieuGia') {
+      if (!coQ(sess, 'sanpham')) return tre({ status: 'error', msg: 'forbidden' });
+      var co = {}; data.forEach(function (x) { co[x.ma] = 1; });
+      return tre({ status: 'ok', nhom: ['Gạch', 'Thiết bị vệ sinh', 'Thiết bị nhà bếp'], hang: ['Hãng Mẫu A', 'Hãng Mẫu B', 'Inax', 'Viglacera'], data: [
+        { ma: 'TBL284V', ten: 'Lavabo Inax treo L284V - màu trắng', dvt: 'cái', dg: '', kc: '', nhom: 'Thiết bị vệ sinh', hang: 'Inax', ton: 1, kho: ['K1'] },
+        { ma: 'TBV23', ten: 'Lavabo Viglacera V23', dvt: 'cái', dg: '', kc: '', nhom: 'Thiết bị vệ sinh', hang: 'Viglacera', ton: 2, kho: ['K1', 'K2'] },
+        { ma: 'TBSQG612', ten: 'TỦ BASIC QG612', dvt: 'bộ', dg: '', kc: '', nhom: 'Thiết bị vệ sinh', hang: '', ton: 1, kho: ['K1'] },
+        { ma: 'WBLDSH', ten: 'WB lẩu điện Sunhouse', dvt: 'cái', dg: '', kc: '', nhom: '', hang: '', ton: 0, kho: ['K1'] },
+        { ma: 'GTDS3023', ten: 'Gạch TĐ 30x30 S3023 (12v/th)', dvt: 'm²', dg: '12 viên/thùng · 1,08 m²/thùng', kc: '30x30', nhom: 'Gạch', hang: '', ton: -8.333, kho: ['K2'] }
+      ].filter(function (x) { return !co[x.ma]; }) });
+    }
+    if (action === 'themHangLoat') {
+      if (!coQ(sess, 'sanpham')) return tre({ status: 'error', msg: 'forbidden' });
+      var nThem = 0; (p.ds || []).forEach(function (x) { if (!data.some(function (y) { return y.ma === x.ma; })) { data.push({ ma: x.ma, hang: x.hang, nhom: x.nhom, ten: x.ten, kc: x.kc, dvt: x.dvt, dg: x.dg, ny: 0, dl: 0 }); nThem++; } });
+      ghiNK(sess, 'Thêm sản phẩm hàng loạt', '', nThem + ' mã');
+      return tre({ status: 'ok', them: nThem, boQua: 0, msg: 'Đã thêm ' + nThem + ' mã vào bảng giá (thử)' });
+    }
     if (action === 'thongTinTon') return tre(coQ(sess, 'nhapton') ? { status: 'ok', link: 'https://docs.google.com/spreadsheets/', tab: 'TỒN TỔNG HỢP (thử)', luc: '✅ App đã đọc (dữ liệu thử)' } : { status: 'error', msg: 'forbidden' });
     if (action === 'lamMoiTon') return tre(coQ(sess, 'nhapton') ? { status: 'ok', msg: 'App sẽ đọc tồn kho mới ở lần tải tới (thử)' } : { status: 'error', msg: 'forbidden' });
     if (action === 'baoCao') {
