@@ -17,7 +17,7 @@
     set: function (k, v) { try { localStorage.setItem('hn_' + k, JSON.stringify(v)); } catch (e) { } }
   };
   var S = { sess: (function (s) { return s && (s.token === 'demo') === DEMO ? s : null; })(LS.get('sess')), don: [], dem: {}, trang: 'tong', loc: '', q: '', moMa: '', soMoiCu: -1,
-    ton: null, chuaCfg: [], quyen: null, ls: {}, bc: { kieu: 'thangnay' }, nk: { ds: null, q: '' }, nv: null, gia: { ds: null, q: '' }, tonTT: null, sp: { q: '', nhom: '' }, tk: { ds: null, q: '', vt: '' }, temQ: { q: '', nhom: '' } };
+    ton: null, chuaCfg: [], quyen: null, ls: {}, bc: { kieu: 'thangnay' }, nk: { ds: null, q: '' }, nv: null, gia: { ds: null, q: '' }, tonTT: null, sp: { q: '', nhom: '' }, tk: { ds: null, q: '', vt: '' }, temQ: { q: '', nhom: '', hang: '', kc: '', loc: {} } };
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function tien(n) { return Number(n || 0).toLocaleString('vi-VN') + 'đ'; }
@@ -611,23 +611,50 @@
   }
   function themGT(ma, so) { var it = GT.gio.filter(function (x) { return x.ma === ma; })[0]; if (it) it.so += so || 1; else GT.gio.push({ ma: ma, so: so || 1, gia: '' }); luuGT(); }
   function maDoiGiaGT() { return Object.keys(GT.daIn).filter(function (m) { var p = spTheoMa(m); return p && p.ny > 0 && GT.daIn[m].ny != null && Number(GT.daIn[m].ny) !== p.ny; }); }
-  function locTem() {
-    var q = boDau(S.temQ.q).trim().split(/\s+/).filter(String);
+  var LOC_TEM = [['conHang', 'Còn hàng'], ['coGia', 'Có giá'], ['chuaIn', 'Chưa in tem'], ['doiGia', 'Đã đổi giá'], ['trongGio', 'Đang trong giỏ']];
+  function locTem(boQua) { // boQua: bỏ qua 1 điều kiện (để đếm số lựa chọn cho ô chọn đó)
+    var q = boDau(S.temQ.q).trim().split(/\s+/).filter(String), L = S.temQ.loc, doi = L.doiGia ? maDoiGiaGT() : null;
     return (S.gia.ds || []).filter(function (p) {
-      if (S.temQ.nhom && p.nhom !== S.temQ.nhom) return false;
+      if (S.temQ.nhom && boQua !== 'nhom' && p.nhom !== S.temQ.nhom) return false;
+      if (S.temQ.hang && boQua !== 'hang' && p.hang !== S.temQ.hang) return false;
+      if (S.temQ.kc && boQua !== 'kc' && (p.kc || '') !== S.temQ.kc) return false;
+      if (L.conHang && !(S.ton && S.ton[p.ma] && S.ton[p.ma].tong > 0)) return false;
+      if (L.coGia && !(p.ny > 0)) return false;
+      if (L.chuaIn && GT.daIn[p.ma]) return false;
+      if (L.doiGia && doi.indexOf(p.ma) < 0) return false;
+      if (L.trongGio && !GT.gio.some(function (x) { return x.ma === p.ma; })) return false;
+      if (!q.length) return true;
       var s = boDau([p.ma, p.ten, p.tenGoc, p.hang, p.kc].join(' '));
       return q.every(function (w) { return s.indexOf(w) >= 0; });
     });
   }
+  function chonTem(id, nhan, khoa) { // ô chọn có đếm số mã
+    var dem = {}; locTem(khoa).forEach(function (p) { var v = p[khoa] || ''; if (v) dem[v] = (dem[v] || 0) + 1; });
+    var gt = S.temQ[khoa];
+    if (gt && !dem[gt]) dem[gt] = 0;
+    return '<select id="' + id + '" class="qt-chon" data-tem-chon="' + khoa + '"><option value="">' + nhan + '</option>' + Object.keys(dem).sort(function (x, y) { return x.localeCompare(y, 'vi', { numeric: true }); })
+      .map(function (v) { return '<option value="' + esc(v) + '"' + (gt === v ? ' selected' : '') + '>' + esc(v) + ' (' + dem[v] + ')</option>'; }).join('') + '</select>';
+  }
+  function boLocTem() {
+    return '<div class="tm-loc"><input id="qt-tem-q" type="search" placeholder="Tìm mã, tên, hãng, kích cỡ…" value="' + esc(S.temQ.q) + '"></div>' +
+      '<div class="tm-loc tm-loc-2">' + chonTem('qt-tem-nhom', 'Tất cả nhóm', 'nhom') + chonTem('qt-tem-hang', 'Tất cả hãng', 'hang') + chonTem('qt-tem-kc', 'Mọi kích cỡ', 'kc') + '</div>' +
+      '<div class="qt-loc tm-chip tm-loc-3">' + LOC_TEM.map(function (l) { return '<button type="button" class="chip' + (S.temQ.loc[l[0]] ? ' on' : '') + '" data-tem-loc="' + l[0] + '">' + l[1] + '</button>'; }).join('') +
+      (S.temQ.q || S.temQ.nhom || S.temQ.hang || S.temQ.kc || Object.keys(S.temQ.loc).some(function (k) { return S.temQ.loc[k]; }) ? '<button type="button" class="chip tm-bo" data-qt-act="tem-bo-loc">✕ Bỏ lọc</button>' : '') + '</div>';
+  }
   function dsTimTem() {
     if (!S.gia.ds) return '<div class="qt-trong">Đang tải bảng giá…</div>';
+    if (S.temQ.loc.conHang && !S.ton) { taiTon().then(function () { var e = $('qt-tem-tim'); if (e) e.innerHTML = dsTimTem(); }); return '<div class="qt-trong">Đang tải tồn kho…</div>'; }
     var ds = locTem();
     if (!ds.length) return '<div class="qt-trong">Không có mã phù hợp</div>';
-    return '<div class="tm-dau-ds"><small>' + ds.length + ' mã</small><button type="button" class="btn btn-vien btn-nho" data-qt-act="tem-them-loc"' + (ds.length > 300 ? ' disabled title="Lọc bớt (tối đa 300 mã)"' : '') + '>＋ Thêm cả ' + ds.length + ' mã</button></div>' +
-      '<div class="tm-ds">' + ds.slice(0, 60).map(function (p) {
-        var co = GT.gio.some(function (x) { return x.ma === p.ma; });
-        return '<button type="button" class="tm-sp' + (co ? ' co' : '') + '" data-tem-them="' + esc(p.ma) + '"><span><b>' + esc(p.ten) + '</b><small>' + esc(p.ma) + (p.ny ? ' · ' + tien(p.ny) : '') + '</small></span><i>' + (co ? '✓' : '＋') + '</i></button>';
-      }).join('') + '</div>' + (ds.length > 60 ? '<p class="mo" style="padding:8px 2px">Hiện 60 mã đầu – gõ thêm để lọc.</p>' : '');
+    var trong = {}; GT.gio.forEach(function (x) { trong[x.ma] = 1; });
+    var daChon = ds.filter(function (p) { return trong[p.ma]; }).length, het = daChon === ds.length;
+    return '<div class="tm-dau-ds"><button type="button" class="tm-tat-ca' + (het ? ' co' : daChon ? ' mot-phan' : '') + '" data-qt-act="tem-chon-het"' + (!het && ds.length > 500 ? ' disabled title="Lọc bớt (tối đa 500 mã một lần)"' : '') + '>' +
+      '<i>' + (het ? '✓' : daChon ? '–' : '') + '</i>' + (het ? 'Bỏ chọn ' : 'Chọn tất cả ') + ds.length + ' mã đang lọc</button><small>' + (daChon ? 'đã chọn ' + daChon + '/' + ds.length : '') + '</small></div>' +
+      '<div class="tm-ds">' + ds.slice(0, 100).map(function (p) {
+        var co = trong[p.ma], ton = S.ton && S.ton[p.ma];
+        return '<button type="button" class="tm-sp' + (co ? ' co' : '') + '" data-tem-them="' + esc(p.ma) + '"><i>' + (co ? '✓' : '') + '</i><span><b>' + esc(p.ten) + '</b><small>' + esc(p.ma) + (p.kc ? ' · ' + esc(p.kc) : '') + (p.ny ? ' · ' + tien(p.ny) : ' · chưa có giá') +
+          (GT.daIn[p.ma] ? ' · đã in' : '') + (ton ? ' · tồn ' + so(ton.tong) : '') + '</small></span></button>';
+      }).join('') + '</div>' + (ds.length > 100 ? '<p class="mo" style="padding:8px 14px">Hiện 100 mã đầu – "Chọn tất cả" vẫn chọn đủ ' + ds.length + ' mã.</p>' : '');
   }
   function veTem() {
     var nhom = {}; (S.gia.ds || []).forEach(function (p) { if (p.nhom) nhom[p.nhom] = 1; });
@@ -635,14 +662,14 @@
     var K = window.TEM_HN.KHO;
     return '<div class="qt-h1">In tem giá <small>tem dán sản phẩm có QR → khách quét xem mẫu</small></div>' +
       (doi.length ? '<div class="qt-xin" style="margin-bottom:12px">🔁 ' + doi.length + ' mã đã đổi giá so với tem in trước<span><button type="button" class="btn btn-cam btn-nho" data-qt-act="tem-doi-gia">Thêm vào giỏ tem</button></span></div>' : '') +
-      '<div class="tm-luoi"><div class="qt-khung tm-trai"><h2>1. Chọn mã</h2><div class="tm-loc"><input id="qt-tem-q" type="search" placeholder="Tìm mã, tên, hãng, kích cỡ…" value="' + esc(S.temQ.q) + '">' +
-      '<select id="qt-tem-nhom" class="qt-chon"><option value="">Tất cả nhóm</option>' + Object.keys(nhom).sort().map(function (n) { return '<option' + (S.temQ.nhom === n ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select></div>' +
+      '<div class="tm-luoi"><div class="qt-khung tm-trai"><h2>1. Chọn mã</h2><div id="qt-tem-loc">' + boLocTem() + '</div>' +
       '<div id="qt-tem-tim">' + dsTimTem() + '</div></div>' +
       '<div class="qt-khung tm-phai"><h2>2. Giỏ tem <small>' + GT.gio.length + ' mã · ' + tong + ' tem</small></h2><div class="tm-noi">' +
       '<div class="tm-nhan">Khổ tem</div><div class="qt-loc tm-chip">' + Object.keys(K).map(function (k) { return '<button type="button" class="chip' + (GT.cfg.kho === k ? ' on' : '') + '" data-tem-kho="' + k + '">' + K[k].ten + '</button>'; }).join('') + '</div>' +
       (GT.cfg.kho === 'tuy' ? '<div class="qt-o-luoi"><label>Rộng (mm)<input type="number" min="25" max="150" data-tem-cfg="w" value="' + esc(GT.cfg.w) + '"></label><label>Cao (mm)<input type="number" min="15" max="120" data-tem-cfg="h" value="' + esc(GT.cfg.h) + '"></label></div>' : '') +
       '<div class="tm-nhan">Khách quét QR thấy liên hệ</div><div class="qt-o-luoi"><label>Tên cửa hàng<input data-tem-cfg="tenCH" value="' + esc(GT.cfg.tenCH || '') + '"></label><label>Số điện thoại<input data-tem-cfg="sdtCH" inputmode="tel" value="' + esc(GT.cfg.sdtCH || '') + '"></label></div>' +
-      (GT.gio.length ? '<div class="tm-gio">' + GT.gio.map(function (it, i) {
+      (GT.gio.length ? '<div class="tm-tat-so"><span>Mỗi mã</span><input type="number" min="1" max="99" id="qt-tem-so" value="' + (GT.soMoi || 1) + '"><span>tem</span><button type="button" class="btn btn-vien btn-nho" data-qt-act="tem-so-het">Áp dụng cho ' + GT.gio.length + ' mã</button></div>' +
+        '<div class="tm-gio">' + GT.gio.map(function (it, i) {
         var p = spTheoMa(it.ma);
         return '<div class="tm-dong"><span><b>' + esc(p ? p._ten : it.ma) + '</b><small>' + esc(it.ma) + '</small></span>' +
           '<input class="qt-so-o" inputmode="numeric" data-tem-gia="' + i + '" value="' + (giaGT(it) ? so(giaGT(it)) : '') + '" placeholder="Giá in" title="Giá in (chỉ in ra tem)">' +
@@ -776,7 +803,7 @@
 
   // ---------- Bấm ----------
   document.addEventListener('click', function (e) {
-    var el = e.target.closest('[data-qt],[data-qt-loc],[data-don],[data-qt-tt],[data-qt-gh],[data-qt-act],[data-bc-ky],[data-nv-luu],[data-gia-luu],[data-sp-sua],[data-tem-them],[data-tem-kho],[data-tem-sl],[data-tk],[data-tk-vt]');
+    var el = e.target.closest('[data-qt],[data-qt-loc],[data-don],[data-qt-tt],[data-qt-gh],[data-qt-act],[data-bc-ky],[data-nv-luu],[data-gia-luu],[data-sp-sua],[data-tem-them],[data-tem-kho],[data-tem-sl],[data-tem-loc],[data-tk],[data-tk-vt]');
     if (!el) { if (e.target.id === 'qt-nen') dongDon(); return; }
     if (el.hasAttribute('data-qt')) { S.trang = el.getAttribute('data-qt'); ve(); return; }
     if (el.hasAttribute('data-qt-loc')) { S.loc = el.getAttribute('data-qt-loc'); S.trang = 'don'; ve(); return; }
@@ -792,6 +819,7 @@
     if (el.hasAttribute('data-gia-luu')) { luuGia(el.getAttribute('data-gia-luu'), el); return; }
     if (el.hasAttribute('data-sp-sua')) { moSuaSP(el.getAttribute('data-sp-sua')); return; }
     if (el.hasAttribute('data-tem-them')) { var mt = el.getAttribute('data-tem-them'), ct = GT.gio.filter(function (x) { return x.ma === mt; })[0]; if (ct) { GT.gio.splice(GT.gio.indexOf(ct), 1); luuGT(); } else themGT(mt); ve(); return; }
+    if (el.hasAttribute('data-tem-loc')) { var kl = el.getAttribute('data-tem-loc'); S.temQ.loc[kl] = !S.temQ.loc[kl]; ve(); return; }
     if (el.hasAttribute('data-tem-kho')) { GT.cfg.kho = el.getAttribute('data-tem-kho'); luuGT(); ve(); return; }
     if (el.hasAttribute('data-tem-sl')) { var ts = GT.gio[Number(el.getAttribute('data-tem-sl'))]; if (ts) { ts.so += Number(el.getAttribute('data-d')); if (ts.so <= 0) GT.gio.splice(GT.gio.indexOf(ts), 1); luuGT(); ve(); } return; }
     if (el.hasAttribute('data-tk')) { var ut = (S.tk.ds || []).filter(function (u) { return u.username === el.getAttribute('data-tk'); })[0]; if (ut) formTK(ut); return; }
@@ -809,7 +837,14 @@
       S.bc.tu = tu; S.bc.den = den; S.bc.kq = null; ve();
     }
     else if (a === 'xuat-bc') xuatBaoCao();
-    else if (a === 'tem-them-loc') { locTem().slice(0, 300).forEach(function (p) { if (!GT.gio.some(function (x) { return x.ma === p.ma; })) themGT(p.ma); }); ve(); }
+    else if (a === 'tem-chon-het') {
+      var dsl = locTem(), coHet = dsl.every(function (p) { return GT.gio.some(function (x) { return x.ma === p.ma; }); });
+      if (coHet) { var bo = {}; dsl.forEach(function (p) { bo[p.ma] = 1; }); GT.gio = GT.gio.filter(function (x) { return !bo[x.ma]; }); luuGT(); }
+      else dsl.slice(0, 500).forEach(function (p) { if (!GT.gio.some(function (x) { return x.ma === p.ma; })) GT.gio.push({ ma: p.ma, so: GT.soMoi || 1, gia: '' }); });
+      luuGT(); ve();
+    }
+    else if (a === 'tem-bo-loc') { S.temQ = { q: '', nhom: '', hang: '', kc: '', loc: {} }; ve(); }
+    else if (a === 'tem-so-het') { var sm = Math.max(1, Math.min(99, Number($('qt-tem-so').value) || 1)); GT.soMoi = sm; GT.gio.forEach(function (x) { x.so = sm; }); luuGT(); ve(); }
     else if (a === 'tem-doi-gia') { maDoiGiaGT().forEach(function (m) { if (!GT.gio.some(function (x) { return x.ma === m; })) themGT(m); }); ve(); }
     else if (a === 'tem-xoa') { if (confirm('Xóa hết giỏ tem?')) { GT.gio = []; luuGT(); ve(); } }
     else if (a === 'tem-in') inTemQT();
@@ -828,7 +863,12 @@
   document.addEventListener('input', function (e) {
     if (e.target.id === 'qt-q') { S.q = e.target.value; var k = document.querySelector('.qt-khung'); if (k) k.innerHTML = bangDon(locDon(), 'Không có đơn phù hợp'); }
     if (e.target.id === 'qt-nk-q') { S.nk.q = e.target.value; var n = $('qt-nk-ds'); if (n) n.innerHTML = bangNhatKy(); }
-    if (e.target.id === 'qt-tem-q' || e.target.id === 'qt-tem-nhom') { S.temQ.q = $('qt-tem-q').value; S.temQ.nhom = $('qt-tem-nhom').value; var tt0 = $('qt-tem-tim'); if (tt0) tt0.innerHTML = dsTimTem(); }
+    if (e.target.id === 'qt-tem-q') { S.temQ.q = e.target.value; var tt0 = $('qt-tem-tim'); if (tt0) tt0.innerHTML = dsTimTem(); }
+    if (e.target.hasAttribute && e.target.hasAttribute('data-tem-chon')) {
+      S.temQ[e.target.getAttribute('data-tem-chon')] = e.target.value;
+      if (e.target.getAttribute('data-tem-chon') === 'nhom') { S.temQ.hang = ''; S.temQ.kc = ''; }
+      var vt = S.temQ.q; $('qt-tem-loc').innerHTML = boLocTem(); $('qt-tem-q').value = vt; $('qt-tem-tim').innerHTML = dsTimTem();
+    }
     if (e.target.id === 'qt-tk-q') { S.tk.q = e.target.value; var tk0 = $('qt-tk-ds'); if (tk0) tk0.innerHTML = bangTK(); }
     if (e.target.id === 'qt-sp-q' || e.target.id === 'qt-sp-nhom') { S.sp.q = $('qt-sp-q').value; S.sp.nhom = $('qt-sp-nhom').value; var sd = $('qt-sp-ds'); if (sd) sd.innerHTML = bangSP(); }
     var dsp = e.target.getAttribute && e.target.getAttribute('data-sp');

@@ -130,6 +130,15 @@ table.qt-bang{width:100%;border-collapse:collapse;font-size:13.5px}
 .tm-xem{display:flex;justify-content:center;padding:12px;background:var(--bg2);border-radius:12px;overflow:auto}
 .tm-chan{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--bd)}.tm-chan .btn{flex:1}
 .tt-vt-admin{background:#FDECEA;color:#B42318}.tt-vt-nv{background:#EDE7F6;color:#5E35B1}.tt-vt-khachhang{background:#E3F2FD;color:#1565C0}
+.tm-loc-2{padding-top:0}.tm-loc-2 .qt-chon{flex:1;min-width:0;font-size:13.5px}
+.tm-loc-3{padding:0 14px 6px;margin:0}.tm-loc-3 .chip{font-size:13px;padding:5px 11px}.tm-bo{color:var(--do)!important}
+.tm-tat-ca{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;color:var(--c);padding:4px 0}
+.tm-tat-ca i,.tm-sp i{font-style:normal;flex-shrink:0;width:22px;height:22px;border-radius:6px;border:2px solid var(--bd2);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800}
+.tm-tat-ca.co i,.tm-sp.co i{background:var(--c);border-color:var(--c)}
+.tm-tat-ca.mot-phan i{background:var(--c);border-color:var(--c)}
+.tm-sp{justify-content:flex-start}
+.tm-tat-so{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13.5px;color:var(--t2)}
+.tm-tat-so input{width:60px;padding:6px 8px;border:1.5px solid var(--bd2);border-radius:8px;font-size:14px}
 @media(max-width:820px){
   .qt-app{display:block}
   .qt-menu{width:auto;height:auto;position:static;flex-direction:row;flex-wrap:wrap;padding:8px}
