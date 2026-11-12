@@ -7,8 +7,8 @@
 <meta name="robots" content="noindex"/>
 <title>Quản trị đơn hàng – Hiển Nga</title>
 <link rel="icon" type="image/png" href="img/favicon.png">
-<link rel="stylesheet" href="style.css?v=14">
-<link rel="stylesheet" href="quan-tri.css?v=9">
+<link rel="stylesheet" href="style.css?v=15">
+<link rel="stylesheet" href="quan-tri.css?v=10">
 </head>
 <body class="qt">
 
@@ -33,14 +33,19 @@
 <div id="qt-app" class="qt-app" hidden>
   <aside class="qt-menu">
     <div class="qt-brand"><span class="logo"><img src="img/logo-mark.png" alt=""></span><b>Quản trị</b></div>
+    <div class="qt-nhom">Bán hàng</div>
     <button type="button" class="qt-mi on" data-qt="tong">▦ Bảng điều khiển</button>
     <button type="button" class="qt-mi" data-qt="don">🛒 Đơn hàng <span class="qt-badge" id="qt-badge" hidden></span></button>
     <button type="button" class="qt-mi" data-qt="giao" id="qt-m-giao" hidden>🚚 Kho & giao hàng <span class="qt-badge" id="qt-badge-giao" hidden></span></button>
+    <div class="qt-nhom">Hàng hóa</div>
+    <button type="button" class="qt-mi" data-qt="tem">🏷 In tem giá</button>
     <button type="button" class="qt-mi" data-qt="sanpham" id="qt-m-sp" hidden>🧱 Sản phẩm</button>
     <button type="button" class="qt-mi" data-qt="gia" id="qt-m-gia" hidden>🏷 Nhập giá</button>
     <button type="button" class="qt-mi" data-qt="ton" id="qt-m-ton" hidden>📦 Tồn kho</button>
+    <div class="qt-nhom">Quản lý</div>
     <button type="button" class="qt-mi" data-qt="baocao" id="qt-m-bc" hidden>📊 Báo cáo</button>
     <button type="button" class="qt-mi" data-qt="nhatky" id="qt-m-nk" hidden>📜 Nhật ký</button>
+    <button type="button" class="qt-mi" data-qt="taikhoan" id="qt-m-tk" hidden>🔑 Tài khoản</button>
     <button type="button" class="qt-mi" data-qt="nhanvien" id="qt-m-nv" hidden>👥 Nhân viên & quyền</button>
     <div class="qt-menu-cuoi">
       <a class="qt-mi" href="./">📱 Mở app bảng giá</a>
@@ -54,10 +59,13 @@
 <div class="qt-nen" id="qt-nen" hidden></div>
 <section class="qt-ngan" id="qt-ngan" hidden></section>
 <div class="toast" id="toast" hidden></div>
+<div id="vung-in" hidden></div><style id="kieu-in"></style>
 
 <script src="config.js?v=7"></script>
+<script src="lib/qr.js?v=1"></script>
+<script src="lib/tem.js?v=1"></script>
 <script src="lib/xlsx.js?v=1"></script>
 <script src="lib/so-ton.js?v=1"></script>
-<script src="quan-tri.js?v=7"></script>
+<script src="quan-tri.js?v=8"></script>
 </body>
 </html>
