@@ -81,7 +81,7 @@
     $('qt-m-giao').hidden = !(co('giao') || co('don'));
     $('qt-m-gia').hidden = !co('nhapgia');
     $('qt-m-sp').hidden = !co('sanpham');
-    $('qt-m-ton').hidden = !co('nhapton');
+    $('qt-m-ton').hidden = !(co('nhapton') || co('baocao'));
     var cg = S.don.filter(function (d) { return d.tt === 'xacnhan'; }).length;
     $('qt-badge-giao').hidden = !cg; $('qt-badge-giao').textContent = cg;
   }
@@ -123,7 +123,7 @@
     if (S.trang === 'nhatky' && !S.nk.ds) taiNhatKy();
     if (S.trang === 'nhanvien' && !S.nv) taiNhanVien();
     if ((S.trang === 'gia' || S.trang === 'sanpham') && !S.gia.ds) taiGia();
-    if (S.trang === 'ton' && !S.tonTT) taiTonTT();
+    if (S.trang === 'ton' && !S.tonTT && co('nhapton')) taiTonTT();
   }
   function trongThang(d) { var x = new Date(d.ngay), n = new Date(); return x.getMonth() === n.getMonth() && x.getFullYear() === n.getFullYear(); }
   function veTong() {
@@ -597,10 +597,31 @@
       S.tonTT = r; if (S.trang === 'ton') ve();
     }).catch(function (e) { toast('Không tải được: ' + e.message); });
   }
+  // Sổ tồn kho Excel: 6 trang tính (Tổng hợp, Theo nhóm, Theo kho & lô, Cần nhập thêm, Hàng đang giữ, Cần kiểm tra).
+  function khungSoTon() {
+    return '<div class="qt-khung qt-so-ton"><div><b>📗 Sổ tồn kho (Excel)</b><span>6 trang tính: Tổng hợp · Theo nhóm hàng · Theo kho & lô · Cần nhập thêm · Hàng đang giữ cho đơn · Dữ liệu cần kiểm tra. ' +
+      'Có màu tình trạng, bộ lọc, dòng tổng tự tính theo lọc, in vừa khổ A4 ngang.</span></div>' +
+      '<label class="qt-chk">Sắp hết khi còn ≤ <input id="qt-nguong" type="number" min="0" value="' + (S.nguong || 5) + '" style="width:64px"></label>' +
+      '<button type="button" class="btn btn-xanh" data-qt-act="tai-so-ton">⬇ Tải sổ tồn kho (.xlsx)</button></div>';
+  }
+  function taiSoTon(nut) {
+    nut.disabled = true; var cu = nut.textContent; nut.textContent = 'Đang tạo file…';
+    S.nguong = Math.max(0, Number($('qt-nguong').value) || 0);
+    Promise.all([api('getTonKho', {}), S.gia.ds ? Promise.resolve({ status: 'ok', data: S.gia.ds }) : api('getAll', {})]).then(function (kq) {
+      if (!kq[0] || kq[0].status !== 'ok') throw new Error((kq[0] && kq[0].msg) || 'không tải được tồn kho');
+      if (!kq[1] || kq[1].status !== 'ok') throw new Error((kq[1] && kq[1].msg) || 'không tải được bảng giá');
+      S.gia.ds = kq[1].data;
+      var sach = window.taoSoTonKho({ ton: kq[0].data, gia: kq[1].data, don: S.don, tonLuc: kq[0].luc, cty: CFG.TEN_DAY_DU || CFG.TEN_APP, nguong: S.nguong });
+      var n = new Date(), ten = 'So-ton-kho-Hien-Nga-' + n.getFullYear() + ('0' + (n.getMonth() + 1)).slice(-2) + ('0' + n.getDate()).slice(-2) + '-' + ('0' + n.getHours()).slice(-2) + ('0' + n.getMinutes()).slice(-2) + '.xlsx';
+      window.XLSX_HN.taiVe(ten, sach);
+      var t = sach.tomTat;
+      toast('Đã tải ' + ten + ' – ' + t.soMa + ' mã, ' + t.sapHet + ' sắp hết, ' + t.het + ' hết hàng');
+    }).catch(function (e) { toast('Không tạo được file: ' + e.message); }).then(function () { nut.disabled = false; nut.textContent = cu; });
+  }
   function veTon() {
-    if (!co('nhapton')) return '<div class="qt-trong">Tài khoản chưa có quyền nhập tồn kho.</div>';
+    if (!co('nhapton')) return '<div class="qt-h1">Tồn kho</div>' + khungSoTon();
     var t = S.tonTT;
-    return '<div class="qt-h1">Tồn kho <small>nhập ở Sheet Tồn kho riêng – app tự đọc</small></div>' +
+    return '<div class="qt-h1">Tồn kho <small>nhập ở Sheet Tồn kho riêng – app tự đọc</small></div>' + khungSoTon() +
       (!t ? '<div class="qt-khung"><div class="qt-trong">Đang tải…</div></div>' :
         '<div class="qt-khung qt-ton-hd"><h2>Cách nhập tồn</h2><ol>' +
         '<li>Bấm <b>Mở Sheet Tồn kho</b> (đăng nhập đúng Gmail đã được quản trị ghi trong "Nhân viên & quyền").</li>' +
@@ -658,6 +679,7 @@
     else if (a === 'dong-sp') dongDon();
     else if (a === 'luu-sp') luuSP(el);
     else if (a === 'nhan-ban-sp') { var fb = docFormSP(); fb.ma = ''; fb.an = false; fb.anh = ''; fb.maKho = ''; moFormSP(fb, true); toast('Đã chép thông tin – nhập mã mới rồi bấm Thêm'); }
+    else if (a === 'tai-so-ton') taiSoTon(el);
     else if (a === 'lam-moi-ton') { el.disabled = true; api('lamMoiTon', {}, true).then(function (r) { el.disabled = false; toast(r && r.status === 'ok' ? r.msg : 'Không làm được: ' + (r && r.msg)); S.ton = null; S.tonTT = null; ve(); }); }
     else if (a === 'dang-xuat') { try { localStorage.removeItem('hn_sess'); } catch (er) { } S.sess = null; hienLogin(); }
   });

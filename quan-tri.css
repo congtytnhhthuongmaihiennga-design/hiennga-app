@@ -102,6 +102,11 @@ table.qt-bang{width:100%;border-collapse:collapse;font-size:13.5px}
 .qt-o-luoi input[readonly]{background:var(--bg2);color:var(--t2)}
 .qt-chon{padding:9px 10px;border:1.5px solid var(--bd2);border-radius:10px;font-size:14.5px;background:var(--bg1);color:var(--t1)}
 .qt-sp-anh{margin-top:12px}.qt-sp-anh img{max-width:200px;border-radius:10px;border:1px solid var(--bd)}
+.qt-so-ton{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;padding:14px 16px;margin-bottom:16px;border-color:#A6D8B5;background:#F3FBF5}
+.qt-so-ton>div{flex:1;min-width:260px;display:flex;flex-direction:column;gap:4px}
+.qt-so-ton>div span{font-size:13px;color:var(--t2)}
+.qt-so-ton input{padding:6px 8px;border:1.5px solid var(--bd2);border-radius:8px}
+.qt-so-ton .btn{width:auto}
 @media(max-width:820px){
   .qt-app{display:block}
   .qt-menu{width:auto;height:auto;position:static;flex-direction:row;flex-wrap:wrap;padding:8px}
