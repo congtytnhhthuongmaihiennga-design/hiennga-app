@@ -155,13 +155,14 @@ function baoCao(p) {
 function suaGia(p, ti) {
   var ma = chu(p.ma);
   if (!ma) return { status: 'error', msg: 'Thiếu mã hàng.' };
+  if (chu(p.nyV) || chu(p.dlV)) try { damBaoCotGiaVien(); } catch (e) { }
   var sh = layTab(TAB.gia, true), rows = sh.getDataRange().getValues();
   var hi = timDongTieuDe(rows, COT_GIA.ma);
   if (hi < 0) return { status: 'error', msg: 'Tab Giá không có cột Mã hàng.' };
   var c = timCot(rows[hi], COT_GIA), doi = [];
   for (var i = hi + 1; i < rows.length; i++) {
     if (chu(rows[i][c.ma]) !== ma) continue;
-    [['ny', 'Giá niêm yết'], ['dl', 'Giá đại lý']].forEach(function (k) {
+    [['ny', 'Giá niêm yết'], ['dl', 'Giá đại lý'], ['nyV', 'Giá NY / viên'], ['dlV', 'Giá ĐL / viên']].forEach(function (k) {
       var v = p[k[0]];
       if (v === undefined || v === '' || v === null || c[k[0]] === undefined) return;
       var moi = Math.max(0, Math.round(Number(String(v).replace(/[^\d]/g, '')) || 0)), cu = soTien(rows[i][c[k[0]]]);

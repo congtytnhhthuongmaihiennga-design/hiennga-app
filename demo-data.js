@@ -68,7 +68,8 @@
   window.DEMO_API = function (action, p, sess) {
     if (action === 'getAll') {
       var ds = sao(data);
-      if (!sess) ds.forEach(function (x) { x.dl = 0; });
+      ds.forEach(function (x) { var m = String(x.dg).match(/(\d+) viên\/thùng · ([\d.]+) m²/); if (x.dvt === 'm²' && m) { var mv = Number(m[2]) / Number(m[1]); x.m2Vien = Math.round(mv * 10000) / 10000; if (x.ny) { x.nyV = Math.round(x.ny * mv / 100) * 100; x.nyVTu = 1; } if (x.dl) { x.dlV = Math.round(x.dl * mv / 100) * 100; x.dlVTu = 1; } } });
+      if (!sess) ds.forEach(function (x) { x.dl = 0; x.dlV = 0; });
       return tre({ status: 'ok', data: ds, anh: {}, luc: new Date().toISOString(), capNhat: '2026-11-05T08:00:00+07:00', daDangNhap: !!sess, chuaCfg: sess ? sao(chuaCfg) : [] });
     }
     if (action === 'getTonKho') {

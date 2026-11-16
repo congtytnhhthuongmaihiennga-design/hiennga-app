@@ -51,6 +51,8 @@ var COT_GIA = {
   dg:       ['Đóng gói', 'Quy cách đóng gói'],
   ny:       ['Giá niêm yết', 'Giá lẻ', 'Giá bán lẻ'],
   dl:       ['Giá đại lý', 'Giá ĐL', 'Giá sỉ'],
+  nyV:      ['Giá NY / viên', 'Giá niêm yết / viên', 'Giá NY/viên', 'Giá viên NY', 'Giá lẻ / viên'],   // gạch bán theo viên (không bắt buộc)
+  dlV:      ['Giá ĐL / viên', 'Giá đại lý / viên', 'Giá ĐL/viên', 'Giá viên ĐL'],
   gc:       ['Ghi chú'],
   hien:     ['Hiện trên app', 'Hiện', 'Hiển thị'],
   mau:      ['Màu', 'Màu sắc'],
@@ -72,7 +74,7 @@ var COT_TON = {
 // Tiêu đề tạo sẵn khi bấm "Khởi tạo các tab".
 var TIEU_DE = {
   gia:    ['Hãng', 'Nhóm hàng', 'Mã hàng', 'Tên hàng', 'Kích cỡ / Quy cách', 'Loại', 'Đơn vị', 'Đóng gói',
-           'Giá niêm yết', 'Giá đại lý', 'Ghi chú', 'Hiện trên app',
+           'Giá niêm yết', 'Giá đại lý', 'Giá NY / viên', 'Giá ĐL / viên', 'Ghi chú', 'Hiện trên app',
            'Màu', 'Công năng', 'Tính năng', 'Hoa văn', 'Men', 'Dung tích'],
   tonkho: ['Mã hàng', 'Kho', 'Số lượng', 'Số lô', 'Đơn vị'],
   kho:    ['Kho', 'Nhóm giao'],

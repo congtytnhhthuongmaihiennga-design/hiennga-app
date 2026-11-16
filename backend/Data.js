@@ -21,11 +21,12 @@ function docGia() {
     data.push({
       ma: ma, hang: o(r, 'hang'), nhom: o(r, 'nhom'), ten: o(r, 'tenHien') || o(r, 'ten'), tenGoc: o(r, 'ten'), kc: o(r, 'kc'),
       loai: o(r, 'loai'), dvt: o(r, 'dvt'), dg: o(r, 'dg'),
-      ny: soTien(r[c.ny]), dl: c.dl === undefined ? 0 : soTien(r[c.dl]), gc: o(r, 'gc'),
+      ny: soTien(r[c.ny]), dl: c.dl === undefined ? 0 : soTien(r[c.dl]), nyV: c.nyV === undefined ? 0 : soTien(r[c.nyV]), dlV: c.dlV === undefined ? 0 : soTien(r[c.dlV]), gc: o(r, 'gc'),
       mau: o(r, 'mau'), congNang: o(r, 'congNang'), tinhNang: o(r, 'tinhNang'),
       hoaVan: o(r, 'hoaVan'), men: o(r, 'men'), dungTich: o(r, 'dungTich')
     });
   }
+  data.forEach(dongBoGiaVien);
   return { status: 'ok', count: data.length, coGiaDL: c.dl !== undefined, data: data, luc: new Date().toISOString() };
 }
 
@@ -287,7 +288,7 @@ function getAll(ti) {
   var gia = quaDem('gia', docGia, TAB.gia);
   if (gia.status !== 'ok') return gia;
   // Chưa đăng nhập: máy chủ KHÔNG gửi giá đại lý xuống trình duyệt.
-  if (!ti) gia.data.forEach(function (p) { p.dl = 0; });
+  if (!ti) gia.data.forEach(function (p) { p.dl = 0; p.dlV = 0; });
   var anh = {};
   try {
     // Ghép ảnh theo mã không phân biệt hoa/thường (tên file ảnh hay gõ chữ thường).
@@ -314,4 +315,40 @@ function getTonKho(ti) {
     res.data[ma] = { tong: cap(d.tong), dvt: d.dvt, vt: d.vt, m2: d.m2, tier: { nhanh: cap(d.tier.nhanh), mai: cap(d.tier.mai), cho: cap(d.tier.cho) } };
   });
   return res;
+}
+
+// ---------- Giá theo viên (gạch) ----------
+// Gạch tính giá theo m², "Đóng gói" ghi "4 viên/thùng · 1,44 m²/thùng" -> 1 viên = 1,44 / 4 = 0,36 m².
+// Đồng bộ 2 chiều: có giá m² mà trống giá viên -> tự tính giá viên (làm tròn 100đ);
+// chỉ có giá viên (gạch bán lẻ viên: điểm, viền…) -> tự tính giá m². Ô đã điền tay thì giữ nguyên.
+function vienMoiThung(dg) { var m = String(dg || '').toLowerCase().match(/(\d+)\s*vi(?:ê|e)n\s*\/\s*th/); return m ? Number(m[1]) : 0; }
+function m2MotVien(p) {
+  if (!/^m\s*(2|²)$/i.test(String(p.dvt || '').trim())) return 0;
+  var m = String(p.dg || '').toLowerCase().match(/([\d.,]+)\s*m(?:²|2)\s*\/\s*th/), vt = vienMoiThung(p.dg);
+  var m2 = m ? parseFloat(m[1].replace(',', '.')) : 0;
+  return m2 > 0 && vt > 0 ? m2 / vt : 0;
+}
+function dongBoGiaVien(p) {
+  var mv = m2MotVien(p); if (!mv) return;
+  p.m2Vien = Math.round(mv * 10000) / 10000;
+  [['ny', 'nyV'], ['dl', 'dlV']].forEach(function (k) {
+    if (p[k[0]] > 0 && !(p[k[1]] > 0)) { p[k[1]] = Math.round(p[k[0]] * mv / 100) * 100; p[k[1] + 'Tu'] = 1; }
+    else if (p[k[1]] > 0 && !(p[k[0]] > 0)) { p[k[0]] = Math.round(p[k[1]] / mv); p[k[0] + 'Tu'] = 1; }
+  });
+}
+// Tạo 2 cột giá viên ngay sau cột "Giá đại lý" (chạy khi mở Sheet / khi lưu giá viên lần đầu).
+function damBaoCotGiaVien() {
+  var sh = layTab(TAB.gia, false); if (!sh || sh.getLastRow() < 1) return false;
+  var rows = sh.getRange(1, 1, Math.min(sh.getLastRow(), 10), sh.getLastColumn()).getValues(), hi = timDongTieuDe(rows, COT_GIA.ma);
+  if (hi < 0) return false;
+  var c = timCot(rows[hi], COT_GIA); if (c.nyV !== undefined && c.dlV !== undefined) return false;
+  var sau = (c.dl !== undefined ? c.dl : c.ny) + 1, them = [];
+  if (c.nyV === undefined) them.push('Giá NY / viên'); if (c.dlV === undefined) them.push('Giá ĐL / viên');
+  sh.insertColumnsAfter(sau, them.length);
+  var o = sh.getRange(hi + 1, sau + 1, 1, them.length);
+  o.setValues([them]).setFontWeight('bold').setBackground('#FFF2CC');
+  o.setNote('Giá theo VIÊN cho gạch. Để trống: app tự tính từ giá m² (theo cột Đóng gói "x viên/thùng · y m²/thùng"). ' +
+    'Gạch bán lẻ theo viên (điểm, viền…) thì chỉ cần điền ô này – app tự tính ngược ra giá m².');
+  demXoa('gia');
+  return true;
 }

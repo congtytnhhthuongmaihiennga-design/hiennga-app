@@ -426,3 +426,8 @@ body.che-xem main{padding:0 0 30px;max-width:720px}
 .sh-foot .gio-chot{flex:0 0 auto;max-width:42%;padding-right:6px}
 .sh-foot .gio-chot+.btn{flex:1;width:auto;min-width:0}
 .gio-ghi{margin:8px 0 2px;font-size:12.5px}
+
+/* Giá theo viên (gạch) */
+.gia-vien{display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;padding-top:8px;border-top:1px dashed var(--bd);font-size:14px}
+.gia-vien>span:first-child{color:var(--t2)}.gia-vien b{color:var(--c)}.gia-vien s{margin-left:8px;color:var(--t2);font-size:12.5px}
+.gia-vien-ghi{text-align:right;font-size:11.5px;color:var(--t2)}

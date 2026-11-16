@@ -3,6 +3,7 @@
 // ============================================================
 
 function onOpen() {
+  try { damBaoCotGiaVien(); } catch (e) { }
   SpreadsheetApp.getUi().createMenu('📱 App')
     .addItem('0. Cấp quyền cho app (Email, Telegram, nhắc hạn)', 'capQuyen')
     .addItem('1. Khởi tạo các tab (chỉ tạo tab còn thiếu)', 'khoiTaoSheet')

@@ -4,11 +4,11 @@
 // Kèm: link ảnh (ghi vào Sheet Hình ảnh) và "Mã bên kho" khi phần mềm kho dùng mã khác (tab "Nối mã").
 // Không xóa dòng: muốn bỏ mã thì đánh dấu "Ẩn trên app" (cột Hiện trên app = Không).
 // ============================================================
-var TRUONG_SP = ['hang', 'nhom', 'ten', 'tenHien', 'kc', 'loai', 'dvt', 'dg', 'ny', 'dl', 'gc', 'mau', 'congNang', 'tinhNang', 'hoaVan', 'men', 'dungTich'];
+var TRUONG_SP = ['hang', 'nhom', 'ten', 'tenHien', 'kc', 'loai', 'dvt', 'dg', 'ny', 'dl', 'nyV', 'dlV', 'gc', 'mau', 'congNang', 'tinhNang', 'hoaVan', 'men', 'dungTich'];
 var TEN_TRUONG = { hang: 'Hãng', nhom: 'Nhóm hàng', ten: 'Tên hàng', tenHien: 'Tên hiển thị', kc: 'Kích cỡ / Quy cách', loai: 'Loại', dvt: 'Đơn vị',
-  dg: 'Đóng gói', ny: 'Giá niêm yết', dl: 'Giá đại lý', gc: 'Ghi chú', hien: 'Hiện trên app', mau: 'Màu', congNang: 'Công năng', tinhNang: 'Tính năng',
+  dg: 'Đóng gói', ny: 'Giá niêm yết', dl: 'Giá đại lý', nyV: 'Giá NY / viên', dlV: 'Giá ĐL / viên', gc: 'Ghi chú', hien: 'Hiện trên app', mau: 'Màu', congNang: 'Công năng', tinhNang: 'Tính năng',
   hoaVan: 'Hoa văn', men: 'Men', dungTich: 'Dung tích' };
-var LA_GIA = { ny: 1, dl: 1 };
+var LA_GIA = { ny: 1, dl: 1, nyV: 1, dlV: 1 };
 
 function bangGiaTho() {
   var sh = layTab(TAB.gia, true), rows = sh.getDataRange().getValues();
@@ -40,6 +40,7 @@ function luuSanPham(p, ti) {
   var ma = chu(p.ma), f = p.f || {};
   if (typeof f === 'string') { try { f = JSON.parse(f); } catch (e) { f = {}; } }
   if (!/^[^\s]{1,40}$/.test(ma)) return { status: 'error', msg: 'Mã hàng 1–40 ký tự, không có dấu cách.' };
+  if ((f.nyV !== undefined && chu(f.nyV) !== '') || (f.dlV !== undefined && chu(f.dlV) !== '')) try { damBaoCotGiaVien(); } catch (e) { }
   var lock = LockService.getScriptLock(); lock.waitLock(20000);
   var nk = [];
   try {

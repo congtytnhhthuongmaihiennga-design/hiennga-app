@@ -581,6 +581,12 @@
       html += '<div class="gia-chinh"><span>Giá niêm yết</span><span>' + (p.ny > 0 ? '<span class="gia">' + tien(p.ny) + '</span>' + dv : '<span class="gia-lh">Liên hệ báo giá</span>') + '</span></div>' +
         '<div style="margin-top:10px"><button type="button" class="lock" data-act="dang-nhap">' + ic('lock', 'ic-sm') + 'Đăng nhập để xem giá đại lý</button></div>';
     }
+    // Gạch: giá theo viên (tự tính từ giá m² hoặc nhập tay trong bảng giá)
+    if (p.m2Vien && (p.nyV > 0 || p.dlV > 0)) {
+      var vv = function (g, tu) { return (tu ? '≈ ' : '') + tien(g) + '<span class="dvt"> /viên</span>'; };
+      html += '<div class="gia-vien"><span>Giá theo viên</span><span>' + (S.sess && p.dlV > 0 ? '<b>' + vv(p.dlV, p.dlVTu) + '</b>' + (p.nyV > 0 ? '<s class="ny">' + tien(p.nyV) + '</s>' : '') : vv(p.nyV, p.nyVTu)) + '</span></div>' +
+        '<div class="gia-vien-ghi">1 viên = ' + so(p.m2Vien) + ' m²</div>';
+    }
     html += '</div>';
 
     html += '<div class="sec">Tồn kho</div><div class="box">' + htmlTonKho(p) + '</div>';
@@ -1268,7 +1274,7 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden && !DEMO) kiemTraBanMoi(); });
   if (DEMO) {
     var sc = document.createElement('script');
-    sc.src = 'demo-data.js?v=11'; sc.onload = batDau;
+    sc.src = 'demo-data.js?v=12'; sc.onload = batDau;
     sc.onerror = function () { document.body.innerHTML = '<p style="padding:20px">Chưa cấu hình APPS_URL trong config.js.</p>'; };
     document.head.appendChild(sc);
   } else batDau();

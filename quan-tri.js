@@ -460,23 +460,27 @@
     });
     if (!ds.length) return '<div class="qt-trong">Không có mã phù hợp</div>';
     return '<div class="qt-trong-nho">' + ds.length + ' mã' + (ds.length > 60 ? ' – hiện 60 mã đầu, gõ thêm để lọc' : '') + '</div>' +
-      '<table class="qt-bang qt-gia"><thead><tr><th>Mã / tên</th><th class="an-dt">Hãng · ĐVT</th><th class="so">Giá niêm yết</th><th class="so">Giá đại lý</th><th></th></tr></thead><tbody>' +
+      '<table class="qt-bang qt-gia"><thead><tr><th>Mã / tên</th><th class="an-dt">Hãng · ĐVT</th><th class="so">Giá niêm yết</th><th class="so">Giá đại lý</th><th class="so">NY / viên</th><th class="so">ĐL / viên</th><th></th></tr></thead><tbody>' +
       ds.slice(0, 60).map(function (p) {
         return '<tr><td><b>' + esc(p.ma) + '</b><br><small>' + esc(p.ten) + '</small></td><td class="an-dt"><small>' + esc(p.hang) + ' · ' + esc(p.dvt) + '</small></td>' +
-          '<td class="so"><input class="qt-so-o" inputmode="numeric" data-gia-ny="' + esc(p.ma) + '" value="' + (p.ny ? so(p.ny) : '') + '" placeholder="0"></td>' +
-          '<td class="so"><input class="qt-so-o" inputmode="numeric" data-gia-dl="' + esc(p.ma) + '" value="' + (p.dl ? so(p.dl) : '') + '" placeholder="0"></td>' +
+          oGia(p, 'ny') + oGia(p, 'dl') + (p.m2Vien ? oGia(p, 'nyV') + oGia(p, 'dlV') : '<td class="so"><small class="mo">—</small></td><td class="so"><small class="mo">—</small></td>') +
           '<td><button type="button" class="btn btn-chinh btn-nho" data-gia-luu="' + esc(p.ma) + '">Lưu</button></td></tr>';
       }).join('') + '</tbody></table>';
   }
+  // Ô giá: số tự tính (từ giá m² ↔ giá viên) hiện mờ ở placeholder, không điền sẵn – gõ vào là ghi đè.
+  function oGia(p, k) {
+    var tu = p[k + 'Tu'], v = p[k];
+    return '<td class="so"><input class="qt-so-o' + (k.length > 2 ? ' o-vien' : '') + '" inputmode="numeric" data-gia-' + k.toLowerCase() + '="' + esc(p.ma) + '" value="' + (!tu && v ? so(v) : '') + '" placeholder="' + (tu && v ? '≈ ' + so(v) : '0') + '" title="' + (tu ? 'Đang tự tính – gõ số để đặt giá riêng' : '') + '"></td>';
+  }
   function luuGia(ma, nut) {
     var gt = function (k) { var el = document.querySelector('[data-gia-' + k + '="' + ma + '"]'); return el ? el.value.replace(/[^\d]/g, '') : ''; };
-    var ny = gt('ny'), dl = gt('dl');
+    var ny = gt('ny'), dl = gt('dl'), nyV = gt('nyv'), dlV = gt('dlv');
     if (dl && ny && Number(dl) > Number(ny) && !confirm('Giá đại lý cao hơn giá niêm yết – vẫn lưu?')) return;
     nut.disabled = true;
-    api('suaGia', { ma: ma, ny: ny, dl: dl }, true).then(function (r) {
+    api('suaGia', { ma: ma, ny: ny, dl: dl, nyV: nyV, dlV: dlV }, true).then(function (r) {
       nut.disabled = false;
       if (!r || r.status !== 'ok') throw new Error((r && r.msg) || 'lỗi');
-      var p = S.gia.ds.filter(function (x) { return x.ma === ma; })[0]; if (p) { if (ny) p.ny = Number(ny); if (dl) p.dl = Number(dl); }
+      S.gia.ds = null; taiGia(); // tải lại để thấy giá viên / m² tự tính mới
       nut.textContent = '✓'; setTimeout(function () { nut.textContent = 'Lưu'; }, 1500);
       toast(r.msg); S.nk.ds = null;
     }).catch(function (e) { nut.disabled = false; toast('Không lưu được: ' + e.message); });
@@ -492,7 +496,7 @@
       ['ten', 'Tên vật tư (theo phần mềm kho) *', 'vd Gạch HT 60x60 BC6600 Trắng Loại 1 (4v/th)'], ['tenHien', 'Tên hiển thị trên app', 'để trống = dùng tên vật tư'],
       ['dvt', 'Đơn vị tính giá *', 'm², cái, bộ…', 'dl-dvt'], ['kc', 'Kích cỡ / Quy cách', 'vd 60x60, 30x60', 'dl-kc'], ['loai', 'Loại / dòng', 'vd Loại 1, Porcelain', 'dl-loai']]],
     ['Đóng gói (gạch, ngói: để app quy đổi m² ↔ thùng)', [['vt', 'Số viên / thùng', 'vd 4'], ['m2', 'm² / thùng', 'vd 1,44'], ['dg', 'Đóng gói (tự điền từ 2 ô trên, sửa được)', 'vd 4 viên/thùng · 1,44 m²/thùng']]],
-    ['Giá', [['ny', 'Giá niêm yết (đ)', 'vd 258000'], ['dl', 'Giá đại lý (đ)', 'vd 215000']]],
+    ['Giá', [['ny', 'Giá niêm yết (đ / đơn vị)', 'vd 258000'], ['dl', 'Giá đại lý (đ / đơn vị)', 'vd 215000'], ['nyV', 'Giá NY / viên (gạch)', 'trống = tự tính từ giá m²'], ['dlV', 'Giá ĐL / viên (gạch)', 'trống = tự tính từ giá m²']]],
     ['Thuộc tính (bộ lọc trên app)', [['mau', 'Màu', '', 'dl-mau'], ['hoaVan', 'Hoa văn / vân', '', 'dl-hoaVan'], ['men', 'Men / bề mặt', 'vd Bóng, Mờ', 'dl-men'],
       ['congNang', 'Công năng', 'vd Lát nền, Ốp tường', 'dl-congNang'], ['tinhNang', 'Tính năng', 'vd Chống trơn', 'dl-tinhNang'], ['dungTich', 'Dung tích', 'vd 18L, 5L']]],
     ['Khác', [['gc', 'Ghi chú', ''], ['anh', 'Link ảnh Google Drive', 'Chia sẻ "Bất kỳ ai có đường liên kết"'], ['maKho', 'Mã bên phần mềm kho (nếu khác mã hàng)', 'để tồn kho tự khớp']]]
@@ -605,7 +609,7 @@
     var html = '<div class="sh-head"><h3>' + (moi ? '＋ Thêm sản phẩm mới' : 'Sửa ' + esc(sp.ma)) + '</h3><button type="button" class="sh-x" data-qt-act="dong-sp" aria-label="Đóng">✕</button></div><div class="sh-body qt-form-sp">' +
       O_SP.map(function (nh) {
         return '<div class="sec">' + nh[0] + '</div><div class="qt-o-luoi">' + nh[1].map(function (o) {
-          var k = o[0], v = sp[k] == null ? '' : sp[k], laSo = k === 'ny' || k === 'dl';
+          var k = o[0], v = sp[k] == null ? '' : sp[k], laSo = k === 'ny' || k === 'dl' || k === 'nyV' || k === 'dlV';
           if (o[3]) dls[o[3]] = k === 'kc' || k === 'loai' || k === 'hang' || k === 'nhom' || k === 'dvt' || o[3].indexOf('dl-') === 0 ? goiY(k) : [];
           var rong = ['ten', 'tenHien', 'dg', 'gc', 'anh', 'tinhNang', 'congNang'].indexOf(k) >= 0 ? ' class="rong"' : '';
           return '<label' + rong + '>' + o[1] + '<input data-sp="' + k + '"' + (k === 'ma' && !moi ? ' readonly' : '') + (laSo ? ' inputmode="numeric"' : '') +
@@ -620,6 +624,18 @@
       (moi ? '' : '<button type="button" class="btn btn-vien" data-qt-act="nhan-ban-sp">Nhân bản thành mã mới</button>') + '</div></div>';
     $('qt-ngan').innerHTML = html; $('qt-ngan').hidden = false; $('qt-nen').hidden = false;
     S.sp.goc = moi ? {} : JSON.parse(JSON.stringify(sp));
+    goiYGiaVien();
+  }
+  // Form Sản phẩm: m² một viên = (m²/thùng) / (viên/thùng) -> gợi ý giá viên ↔ giá m² ở placeholder
+  function goiYGiaVien() {
+    var g = function (k) { var e = document.querySelector('[data-sp=' + k + ']'); return e ? e : null; };
+    var vt = Number((g('vt') || {}).value) || 0, m2 = parseFloat(String((g('m2') || {}).value || '').replace(',', '.')) || 0, mv = vt && m2 ? m2 / vt : 0;
+    [['ny', 'nyV'], ['dl', 'dlV']].forEach(function (k) {
+      var eM = g(k[0]), eV = g(k[1]); if (!eM || !eV) return;
+      var vM = Number(eM.value.replace(/[^\d]/g, '')) || 0, vV = Number(eV.value.replace(/[^\d]/g, '')) || 0;
+      eV.placeholder = mv && vM && !vV ? '≈ ' + so(Math.round(vM * mv / 100) * 100) + ' (tự tính)' : 'trống = tự tính từ giá m²';
+      eM.placeholder = mv && vV && !vM ? '≈ ' + so(Math.round(vV / mv)) + ' (tự tính từ giá viên)' : 'vd 258000';
+    });
   }
   function moSuaSP(ma) {
     api('docSanPham', { ma: ma }).then(function (r) {
@@ -637,10 +653,10 @@
     if (!ma) { toast('Nhập mã hàng'); return; }
     if (/\s/.test(ma)) { toast('Mã hàng không được có dấu cách'); return; }
     if (dg.moi && (!f.ten || !f.nhom || !f.dvt)) { toast('Nhập đủ: Tên vật tư, Nhóm hàng, Đơn vị'); return; }
-    ['ny', 'dl'].forEach(function (k) { f[k] = f[k].replace(/[^\d]/g, ''); });
+    ['ny', 'dl', 'nyV', 'dlV'].forEach(function (k) { f[k] = (f[k] || '').replace(/[^\d]/g, ''); });
     if (f.dl && f.ny && Number(f.dl) > Number(f.ny) && !confirm('Giá đại lý cao hơn giá niêm yết – vẫn lưu?')) return;
     var gui = {}, goc = S.sp.goc || {};
-    ['hang', 'nhom', 'ten', 'tenHien', 'kc', 'loai', 'dvt', 'dg', 'ny', 'dl', 'gc', 'mau', 'congNang', 'tinhNang', 'hoaVan', 'men', 'dungTich'].forEach(function (k) {
+    ['hang', 'nhom', 'ten', 'tenHien', 'kc', 'loai', 'dvt', 'dg', 'ny', 'dl', 'nyV', 'dlV', 'gc', 'mau', 'congNang', 'tinhNang', 'hoaVan', 'men', 'dungTich'].forEach(function (k) {
       var cu = goc[k] == null ? '' : String(goc[k]);
       if (dg.moi ? f[k] !== '' : f[k] !== cu) gui[k] = f[k];
     });
@@ -1141,6 +1157,7 @@
     if (e.target.id === 'qt-tk-q') { S.tk.q = e.target.value; var tk0 = $('qt-tk-ds'); if (tk0) tk0.innerHTML = bangTK(); }
     if (e.target.id === 'qt-sp-q' || e.target.id === 'qt-sp-nhom') { S.sp.q = $('qt-sp-q').value; S.sp.nhom = $('qt-sp-nhom').value; var sd = $('qt-sp-ds'); if (sd) sd.innerHTML = bangSP(); }
     var dsp = e.target.getAttribute && e.target.getAttribute('data-sp');
+    if (dsp === 'ny' || dsp === 'dl' || dsp === 'nyV' || dsp === 'dlV' || dsp === 'vt' || dsp === 'm2') goiYGiaVien();
     if (dsp === 'vt' || dsp === 'm2') { // tự ghép "Đóng gói" cho gạch / ngói
       var vt = document.querySelector('[data-sp=vt]').value.trim(), m2 = document.querySelector('[data-sp=m2]').value.trim();
       document.querySelector('[data-sp=dg]').value = [vt ? vt + ' viên/thùng' : '', m2 ? m2 + ' m²/thùng' : ''].filter(String).join(' · ');
@@ -1165,5 +1182,5 @@
     veMenu(); ve(); taiDon();
     clearInterval(batDau._t); batDau._t = setInterval(function () { if (!document.hidden) taiDon(true); }, 60000); // tự làm mới mỗi phút
   }
-  if (DEMO) { var sc = document.createElement('script'); sc.src = 'demo-data.js?v=11'; sc.onload = batDau; document.head.appendChild(sc); } else batDau();
+  if (DEMO) { var sc = document.createElement('script'); sc.src = 'demo-data.js?v=12'; sc.onload = batDau; document.head.appendChild(sc); } else batDau();
 })();
