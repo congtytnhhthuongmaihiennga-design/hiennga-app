@@ -180,3 +180,21 @@ function xoaToanBoDon() {
   ghiNhatKy({ user: 'menu Sheet', role: 'admin' }, 'Xóa toàn bộ đơn hàng', '', nD + ' đơn, ' + nC + ' dòng chi tiết');
   ui.alert('Đã xóa ' + nD + ' đơn hàng và ' + nC + ' dòng chi tiết.\nLỡ tay: Tệp → Lịch sử phiên bản → khôi phục bản trước.');
 }
+
+// Cùng việc trên nhưng gọi từ trang quản trị (chỉ quản trị; trang hỏi xác nhận 2 lần trước khi gọi).
+function xoaHetDonWeb(p, ti) {
+  if (chu(p.xacNhan) !== 'XOA') return { status: 'error', msg: 'Thiếu xác nhận.' };
+  var shD = layTab(TAB_DON, false), shC = layTab(TAB_CT, false);
+  var nD = shD ? Math.max(0, shD.getLastRow() - 1) : 0, nC = shC ? Math.max(0, shC.getLastRow() - 1) : 0;
+  if (!nD && !nC) return { status: 'ok', msg: 'Không có đơn hàng nào để xóa.' };
+  var lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    if (shD && nD) shD.deleteRows(2, nD);
+    if (shC && nC) shC.deleteRows(2, nC);
+    var pr = PropertiesService.getScriptProperties(), all = pr.getProperties();
+    Object.keys(all).forEach(function (k) { if (/^SO_DON_/.test(k)) pr.deleteProperty(k); });
+  } finally { lock.releaseLock(); }
+  demXoa('giu');
+  ghiNhatKy(ti, 'Xóa toàn bộ đơn hàng', '', nD + ' đơn, ' + nC + ' dòng chi tiết');
+  return { status: 'ok', msg: 'Đã xóa ' + nD + ' đơn hàng và ' + nC + ' dòng chi tiết' };
+}

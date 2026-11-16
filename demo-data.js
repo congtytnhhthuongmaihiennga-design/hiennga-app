@@ -192,6 +192,7 @@
       ghiNK(sess, p.moi ? 'Thêm sản phẩm' : 'Sửa sản phẩm', '', p.ma + ': ' + Object.keys(f).join(', '));
       return tre({ status: 'ok', msg: (p.moi ? 'Đã thêm mã ' : 'Đã lưu mã ') + p.ma + ' (thử)' });
     }
+    if (action === 'xoaHetDon') { if (!sess || sess.role !== 'admin') return tre({ status: 'error', msg: 'forbidden' }); var n0 = donDemo.length; donDemo.length = 0; ghiNK(sess, 'Xóa toàn bộ đơn hàng', '', n0 + ' đơn'); return tre({ status: 'ok', msg: 'Đã xóa ' + n0 + ' đơn hàng (thử)' }); }
     if (action === 'dsSanPhamAn') return tre(coQ(sess, 'sanpham') ? { status: 'ok', data: sao(spAnDemo) } : { status: 'error', msg: 'forbidden' });
     if (action === 'dsBaoGia') return tre(coQ(sess, 'baogia') ? { status: 'ok', data: sao(bgDemo) } : { status: 'error', msg: 'forbidden' });
     if (action === 'luuBaoGia') {

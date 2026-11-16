@@ -158,7 +158,7 @@
   }
   function veDon() {
     var ds = locDon();
-    return '<div class="qt-h1">Đơn hàng <small>' + S.don.length + ' đơn gần nhất</small>' + NUT_LM + '</div>' +
+    return '<div class="qt-h1">Đơn hàng <small>' + S.don.length + ' đơn gần nhất</small>' + NUT_LM + (laAdmin() && S.don.length ? '<button type="button" class="btn btn-vien btn-nho nut-xoa-het" data-qt-act="xoa-het-don">🗑 Xóa toàn bộ đơn</button>' : '') + '</div>' +
       '<div class="qt-loc"><button type="button" class="chip' + (S.loc ? '' : ' on') + '" data-qt-loc="">Tất cả</button>' +
       THU_TU.map(function (t) { return '<button type="button" class="chip' + (S.loc === t ? ' on' : '') + '" data-qt-loc="' + t + '">' + TEN_TT[t] + ' <small>' + (S.dem[t] || 0) + '</small></button>'; }).join('') +
       '<input id="qt-q" type="search" placeholder="Tìm mã đơn, đại lý, SĐT, mã hàng…"></div>' +
@@ -1116,6 +1116,12 @@
     else if (a === 'luu-tk') luuTK(el);
     else if (a === 'xoa-dem') { el.disabled = true; api('clearCache', {}).then(function (r) { el.disabled = false; toast(r && r.status === 'ok' ? 'Đã xóa bộ nhớ đệm – app đọc lại Sheet ở lần mở tới' : 'Không làm được'); S.gia.ds = null; S.ton = null; }); }
     else if (a === 'sp-moi') moFormSP({ nhom: S.sp.nhom || '' }, true);
+    else if (a === 'xoa-het-don') {
+      if (!confirm('XÓA TOÀN BỘ ' + S.don.length + ' đơn hàng?\n\nMất hết dòng ở tab Đơn hàng + Chi tiết đơn, mã đơn đánh số lại từ 001. Không xóa bảng giá, tài khoản, báo giá, nhật ký.\nLấy lại chỉ bằng Lịch sử phiên bản của Sheet.')) return;
+      if ((prompt('Gõ XOA (viết hoa) để xác nhận lần 2:') || '').trim() !== 'XOA') { toast('Đã hủy – không xóa gì'); return; }
+      el.disabled = true;
+      api('xoaHetDon', { xacNhan: 'XOA' }, true).then(function (r) { toast(r && r.status === 'ok' ? r.msg : 'Không xóa được: ' + (r && r.msg)); S.moMa = ''; S.ton = null; S.nk.ds = null; taiDon(); }).catch(function (e) { el.disabled = false; toast('Lỗi: ' + e.message); });
+    }
     else if (a === 'bg-moi') moBaoGia('');
     else if (a === 'bg-ve') { if (!S.bg.doi || confirm('Báo giá chưa lưu – bỏ thay đổi?')) { S.bg.dang = null; S.bg.doi = false; ve(); } }
     else if (a === 'bg-luu') luuBG(el);
@@ -1182,5 +1188,5 @@
     veMenu(); ve(); taiDon();
     clearInterval(batDau._t); batDau._t = setInterval(function () { if (!document.hidden) taiDon(true); }, 60000); // tự làm mới mỗi phút
   }
-  if (DEMO) { var sc = document.createElement('script'); sc.src = 'demo-data.js?v=13'; sc.onload = batDau; document.head.appendChild(sc); } else batDau();
+  if (DEMO) { var sc = document.createElement('script'); sc.src = 'demo-data.js?v=14'; sc.onload = batDau; document.head.appendChild(sc); } else batDau();
 })();
