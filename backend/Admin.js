@@ -16,6 +16,8 @@ function onOpen() {
     .addItem('Cài email nhận báo đơn (chính + kho)', 'caiEmail')
     .addItem('Cài Telegram báo đơn (nhóm chat chính / kho)', 'caiTelegram')
     .addItem('Bật nhắc chừa hàng hết hạn (7h sáng)', 'caiNhacChua')
+    .addSeparator()
+    .addItem('Xóa toàn bộ đơn hàng (dọn dữ liệu thử)…', 'xoaToanBoDon')
     .addToUi();
 }
 
@@ -155,4 +157,26 @@ function capQuyen() {
   try { ScriptApp.getProjectTriggers(); kq.push('✅ Hẹn giờ (nhắc chừa hàng 7h sáng)'); } catch (e) { kq.push('❌ Hẹn giờ: ' + e.message); }
   try { if (SHEET_TON_RIENG()) { ssTon().getName(); kq.push('✅ Mở Sheet Tồn kho'); } } catch (e) { kq.push('❌ Sheet Tồn kho: ' + e.message); }
   SpreadsheetApp.getUi().alert('Kiểm tra quyền', kq.join('\n'), SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+// Xóa TOÀN BỘ đơn hàng (dùng khi dọn dữ liệu chạy thử). Hỏi xác nhận 2 lần; giữ dòng tiêu đề.
+// Lấy lại được bằng Tệp → Lịch sử phiên bản của Sheet nếu lỡ tay.
+function xoaToanBoDon() {
+  var ui = SpreadsheetApp.getUi(), shD = layTab(TAB_DON, false), shC = layTab(TAB_CT, false);
+  var nD = shD ? Math.max(0, shD.getLastRow() - 1) : 0, nC = shC ? Math.max(0, shC.getLastRow() - 1) : 0;
+  if (!nD && !nC) { ui.alert('Không có đơn hàng nào để xóa.'); return; }
+  if (ui.alert('Xóa toàn bộ đơn hàng?', 'Sẽ xóa ' + nD + ' đơn (tab "' + TAB_DON + '") và ' + nC + ' dòng chi tiết (tab "' + TAB_CT + '").\n' +
+    'Đại lý sẽ không còn thấy đơn cũ; hàng đang giữ cho các đơn này được trả lại tồn.\n\nKhông xóa: bảng giá, tài khoản, báo giá, nhật ký.', ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
+  var g = ui.prompt('Xác nhận lần 2', 'Gõ chữ XOA (viết hoa, không dấu) để xóa ' + nD + ' đơn hàng:', ui.ButtonSet.OK_CANCEL);
+  if (g.getSelectedButton() !== ui.Button.OK || g.getResponseText().trim() !== 'XOA') { ui.alert('Đã hủy – không xóa gì.'); return; }
+  var lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    if (shD && nD) shD.deleteRows(2, nD);
+    if (shC && nC) shC.deleteRows(2, nC);
+    var pr = PropertiesService.getScriptProperties(), all = pr.getProperties();
+    Object.keys(all).forEach(function (k) { if (/^SO_DON_/.test(k)) pr.deleteProperty(k); }); // mã đơn đánh số lại từ 001
+  } finally { lock.releaseLock(); }
+  demXoa('giu');
+  ghiNhatKy({ user: 'menu Sheet', role: 'admin' }, 'Xóa toàn bộ đơn hàng', '', nD + ' đơn, ' + nC + ' dòng chi tiết');
+  ui.alert('Đã xóa ' + nD + ' đơn hàng và ' + nC + ' dòng chi tiết.\nLỡ tay: Tệp → Lịch sử phiên bản → khôi phục bản trước.');
 }

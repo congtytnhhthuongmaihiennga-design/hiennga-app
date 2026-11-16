@@ -65,12 +65,14 @@
     { luc: '2026-11-05T07:40:00+07:00', user: 'admin', role: 'admin', hd: 'Đăng nhập', ma: '', ct: '' }
   ];
   function ghiNK(s, hd, ma, ct) { nhatKy.push({ luc: new Date().toISOString(), user: s ? s.username : '', role: s ? s.role : '', hd: hd, ma: ma || '', ct: ct || '' }); }
+  // Ảnh thử: mượn vài ảnh gạch thật của Hiển Nga (Drive công khai) cho 8 mã gạch đầu
+  var ANH_THU = ["https://drive.google.com/thumbnail?id=1dXrB9N7749ZEY7FeuDiO298vNCrVYREg&sz=w1000","https://drive.google.com/thumbnail?id=11JAdy2GwRvYBW3Q__J7NIROVY7HOuhP1&sz=w1000","https://drive.google.com/thumbnail?id=11JAdy2GwRvYBW3Q__J7NIROVY7HOuhP1&sz=w1000","https://drive.google.com/thumbnail?id=1dXrB9N7749ZEY7FeuDiO298vNCrVYREg&sz=w1000","https://drive.google.com/thumbnail?id=11JAdy2GwRvYBW3Q__J7NIROVY7HOuhP1&sz=w1000","https://drive.google.com/thumbnail?id=1NhbgHHZukm4-3pDO_68evcm0sGsD5PgH&sz=w1000","https://drive.google.com/thumbnail?id=1NhbgHHZukm4-3pDO_68evcm0sGsD5PgH&sz=w1000","https://drive.google.com/thumbnail?id=1NhbgHHZukm4-3pDO_68evcm0sGsD5PgH&sz=w1000"];
   window.DEMO_API = function (action, p, sess) {
     if (action === 'getAll') {
       var ds = sao(data);
       ds.forEach(function (x) { var m = String(x.dg).match(/(\d+) viên\/thùng · ([\d.]+) m²/); if (x.dvt === 'm²' && m) { var mv = Number(m[2]) / Number(m[1]); x.m2Vien = Math.round(mv * 10000) / 10000; if (x.ny) { x.nyV = Math.round(x.ny * mv / 100) * 100; x.nyVTu = 1; } if (x.dl) { x.dlV = Math.round(x.dl * mv / 100) * 100; x.dlVTu = 1; } } });
       if (!sess) ds.forEach(function (x) { x.dl = 0; x.dlV = 0; });
-      return tre({ status: 'ok', data: ds, anh: {}, luc: new Date().toISOString(), capNhat: '2026-11-05T08:00:00+07:00', daDangNhap: !!sess, chuaCfg: sess ? sao(chuaCfg) : [] });
+      return tre({ status: 'ok', data: ds, luc: new Date().toISOString(), capNhat: '2026-11-05T08:00:00+07:00', daDangNhap: !!sess, chuaCfg: sess ? sao(chuaCfg) : [], anh: (function () { var o = {}; ds.filter(function (x) { return x.nhom === 'Gạch'; }).slice(0, ANH_THU.length).forEach(function (x, i) { o[x.ma] = [ANH_THU[i]]; }); return o; })() });
     }
     if (action === 'getTonKho') {
       if (!sess) return tre({ status: 'error', msg: 'need_login' });

@@ -431,3 +431,25 @@ body.che-xem main{padding:0 0 30px;max-width:720px}
 .gia-vien{display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;padding-top:8px;border-top:1px dashed var(--bd);font-size:14px}
 .gia-vien>span:first-child{color:var(--t2)}.gia-vien b{color:var(--c)}.gia-vien s{margin-left:8px;color:var(--t2);font-size:12.5px}
 .gia-vien-ghi{text-align:right;font-size:11.5px;color:var(--t2)}
+
+/* Giỏ ảnh gửi khách */
+.row.dang-chon,.card.dang-chon{position:relative}
+.o-chon{position:absolute;z-index:2;top:8px;left:8px;width:26px;height:26px;border-radius:8px;border:2px solid #fff;background:rgba(0,0,0,.28);box-shadow:0 1px 4px rgba(0,0,0,.3);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:15px}
+.o-chon.co{background:var(--c);border-color:var(--c)}
+.o-chon.khong-anh{opacity:.35}
+#gio-anh-bar{position:fixed;left:12px;right:12px;bottom:calc(70px + env(safe-area-inset-bottom));z-index:30;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:14px;background:#111827;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:560px;margin:0 auto}
+#gio-anh-bar[hidden]{display:none}
+#gio-anh-bar>span{flex:1;display:flex;align-items:center;gap:6px;font-size:14px;min-width:0}
+#gio-anh-bar .btn{width:auto;flex-shrink:0}
+#gio-anh-bar .btn-vien{background:transparent;color:#fff;border-color:rgba(255,255,255,.4)}
+.anh-xem{background:var(--bg2);border-radius:12px;padding:8px;text-align:center;min-height:80px}
+.anh-xem img{max-width:100%;max-height:60vh;border-radius:8px;display:block;margin:0 auto}
+.anh-ds{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-top:10px}
+.anh-o-gio{position:relative;display:flex;flex-direction:column;gap:3px}
+.anh-o-gio .anh-o{width:100%;aspect-ratio:1;border-radius:10px}
+.anh-o-gio small{font-size:11px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.anh-bo{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:12px}
+.canh-dl{color:#B42318!important;font-weight:600;margin-top:6px}
+.btn-vuong.on{background:var(--c);color:#fff;border-color:var(--c)}
+.nhap-nhay{animation:nhapnhay 1.1s ease-in-out infinite}
+@keyframes nhapnhay{50%{box-shadow:0 0 0 6px rgba(1,64,255,.25)}}
