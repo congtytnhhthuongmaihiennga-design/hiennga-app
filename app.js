@@ -985,7 +985,7 @@
   // ============================================================
   var GA_TOI_DA = 100, GA_LUOT_MAC_DINH = 10, GA_MB = 20, GA_LUONG = 3;
   S.gioAnh = LS.get('gioanh') || [];
-  var GA = { tienDo: 0, luot: GA_LUOT_MAC_DINH, cache: {}, san: null, hen: null, vong: 0, dt: 'le', cl: LS.get('ga_cl') || 'chuan', pc: null };
+  var GA = { tienDo: 0, luot: GA_LUOT_MAC_DINH, cache: {}, san: null, hen: null, vong: 0, dt: 'le', cl: LS.get('ga_cl') || 'chuan', taiVe: null };
   S.anhCfg = LS.get('anhcfg') || {};
   function laNoiBoAnh() { return S.sess && (S.sess.role === 'admin' || S.sess.role === 'nv'); }
   function laDienThoai() {
@@ -1076,7 +1076,8 @@
   function nutGuiAnh() {
     var n = S.gioAnh.length;
     if (!n) return '';
-    if (!laDienThoai()) return '<button type="button" class="btn btn-chinh" data-act="ga-pc">🖥 Copy từng ảnh để dán Zalo</button>';
+    if (!laDienThoai()) return GA.taiVe ? '<button type="button" class="btn btn-chinh" disabled>⏳ Đang tạo ảnh ' + GA.taiVe.xong + '/' + GA.taiVe.tong + '…</button>'
+      : '<button type="button" class="btn btn-chinh" data-act="ga-tai">⬇ Tải ' + n + ' ảnh rồi gửi qua Zalo</button>';
     if (GA.san && GA.san.files.length) return '<button type="button" class="btn btn-chinh nhap-nhay" data-act="ga-gui">📤 Gửi ' + GA.san.files.length + ' ảnh qua Zalo (đã gửi ' + GA.tienDo + '/' + n + ')</button>';
     var d = demDot();
     return '<button type="button" class="btn btn-chinh" disabled>⏳ ' + (GA.tienDo ? 'Đang chuẩn bị đợt tiếp theo: ' + d.xong + '/' + d.tong + ' (đã gửi ' + GA.tienDo + '/' + n + ')' : 'Đang chuẩn bị ảnh: ' + d.xong + '/' + d.tong) + '</button>';
@@ -1116,7 +1117,7 @@
     var html = dauSheet('Giỏ ảnh đã chọn (' + ds.length + ')') + '<div class="sh-body">';
     if (!ds.length) html += '<div class="trong">' + ic('anh') + '<b>Giỏ ảnh trống</b>Ở danh sách sản phẩm, bấm ô vuông ở góc ảnh để chọn (tối đa ' + GA_TOI_DA + ' sản phẩm).</div>';
     else {
-      html += '<p class="mo ga-ghi">Chọn bao nhiêu mẫu cũng được. Khi gửi, app tự chia thành từng đợt tối đa ' + GA_LUOT_MAC_DINH + ' ảnh qua Zalo và chuẩn bị sẵn đợt kế tiếp.</p>';
+      html += '<p class="mo ga-ghi">Chọn bao nhiêu mẫu cũng được. Bấm <b>Gửi</b> → bảng chia sẻ hiện ra → chọn <b>Zalo</b> → chọn người nhận. App tự chia thành từng đợt tối đa ' + GA_LUOT_MAC_DINH + ' ảnh và chuẩn bị sẵn đợt kế tiếp.</p>';
       if (laNoiBoAnh()) html += '<div class="sec">Gửi cho</div><div class="chips">' + [['le', 'Khách lẻ'], ['dl', 'Đại lý']].map(function (x) { return '<button type="button" class="chip' + (dt === x[0] ? ' on' : '') + '" data-ga-dt="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>' +
         (dt === 'dl' ? '<p class="mo canh-dl">⚠️ Ảnh có giá đại lý – chỉ gửi cho đại lý.</p>' : '<p class="mo ga-ghi">Ảnh chỉ in giá niêm yết.</p>');
       if (laDienThoai()) html += '<div class="sec">Chất lượng ảnh</div><div class="chips">' + Object.keys(window.ANH_GUI.CHAT_LUONG).map(function (k) { return '<button type="button" class="chip' + (GA.cl === k ? ' on' : '') + '" data-ga-cl="' + k + '">' + window.ANH_GUI.CHAT_LUONG[k].ten + '</button>'; }).join('') + '</div>';
@@ -1126,34 +1127,43 @@
           return '<div class="ga-dong' + (i < GA.tienDo ? ' da-gui' : '') + '">' + oAnh(p) + '<span><b>' + esc(p._ten) + '</b><small>' + esc(p.ma) + (i < GA.tienDo ? ' · đã gửi' : '') + '</small></span><button type="button" class="ga-bo" data-ga-bo="' + esc(p.ma) + '" aria-label="Bỏ khỏi giỏ">✕</button></div>';
         }).join('') + '</div>';
     }
+    if (ds.length) html += htmlMoTrinhDuyet() + (laDienThoai() ? '' : '<div class="ga-zalo ga-tai-ghi">Trình duyệt này không gửi thẳng ảnh sang Zalo được. Bấm <b>Tải ảnh</b> → mở Zalo → chọn các ảnh vừa tải (thư mục Tải xuống) để gửi.' +
+      '<span id="ga-mo-zalo" hidden><a class="btn btn-chinh btn-nho" href="' + (laAndroid() || /iphone|ipad/i.test(navigator.userAgent) ? 'https://zalo.me/' : 'https://chat.zalo.me/') + '" target="_blank" rel="noopener">Mở Zalo</a></span></div>');
     html += '</div>';
     if (ds.length) html += '<div class="sh-foot"><button type="button" class="btn btn-vien" data-act="ga-xoa-het">Xóa hết</button><span id="ga-nut" class="ga-nut">' + nutGuiAnh() + '</span></div>';
     var cuon = $('sheet').getAttribute('data-loai') === 'anh' ? $('sheet').scrollTop : 0, moMoi = $('sheet').hidden || $('sheet').getAttribute('data-loai') !== 'anh';
     moSheet(html, 'anh'); $('sheet').scrollTop = cuon; veThanhAnh();
     if (moMoi && ds.length) { GA.dt = 'le'; datLaiGA(true); } // mỗi lần mở: mặc định Khách lẻ
   }
-  // ---------- Máy tính: copy từng ảnh (PNG) rồi Ctrl+V vào Zalo ----------
-  function moCopyPC(i) {
-    var ds = S.gioAnh.map(function (m) { return S.byMa[m]; }).filter(Boolean); if (!ds.length) return;
-    i = Math.max(0, Math.min(i || 0, ds.length - 1)); GA.pc = { i: i, blob: null };
-    var p = ds[i];
-    moSheet(dauSheet('Ảnh ' + (i + 1) + '/' + ds.length + ' – ' + p.ma) + '<div class="sh-body"><p class="mo">' + esc(p._ten) + '</p><div class="anh-xem" id="ga-pc-xem"><div class="mo">Đang tạo ảnh…</div></div>' +
-      '<p class="mo" style="margin-top:8px">Bấm <b>Copy ảnh</b> → mở Zalo → bấm vào khung chat → <b>Ctrl+V</b>. Copy không được: chuột phải vào ảnh → Lưu ảnh.</p></div>' +
-      '<div class="sh-foot"><button type="button" class="btn btn-vien" data-act="gio-anh">← Giỏ ảnh</button><button type="button" class="btn btn-chinh" data-act="ga-pc-copy" disabled>Copy ảnh</button>' +
-      (i < ds.length - 1 ? '<button type="button" class="btn btn-vien" data-act="ga-pc-tiep">Ảnh tiếp theo →</button>' : '') + '</div>', 'anh-pc');
-    window.ANH_GUI.taiAnh(anhCua(p.ma)[0], '=s1600').then(function (b) { return window.ANH_GUI.veAnh(b, thongTinAnh(p, doiTuongAnh()), { px: 1600, png: true }); }).then(function (png) {
-      if (!GA.pc || GA.pc.i !== i) return;
-      GA.pc.blob = png; var o = $('ga-pc-xem'); if (o) o.innerHTML = '<img alt="" src="' + URL.createObjectURL(png) + '">';
-      var n = document.querySelector('[data-act=ga-pc-copy]'); if (n) n.disabled = false;
-    }).catch(function (e) { var o = $('ga-pc-xem'); if (o) o.innerHTML = '<div class="mo">Không tải được ảnh: ' + esc(e.message) + '</div>'; });
+  // ---------- Trình duyệt không gửi được ảnh (mở trong Zalo / máy cũ) ----------
+  function trongZalo() { return /zalo/i.test(navigator.userAgent || ''); }
+  function laAndroid() { return /android/i.test(navigator.userAgent || ''); }
+  function htmlMoTrinhDuyet() {
+    if (!trongZalo()) return '';
+    var link = location.href.split('#')[0];
+    return '<div class="ga-zalo"><b>Bạn đang mở app bên trong Zalo</b> – Zalo không cho app gửi ảnh. ' +
+      (laAndroid() ? '<a class="btn btn-chinh btn-nho" href="intent://' + esc(link.replace(/^https?:\/\//, '')) + '#Intent;scheme=https;package=com.android.chrome;end">Mở bằng Chrome</a>'
+        : 'Bấm <b>⋯</b> ở góc trên → <b>Mở bằng trình duyệt</b> (Safari) rồi gửi lại.') + '</div>';
   }
-  function copyAnhPC() {
-    var b = GA.pc && GA.pc.blob; if (!b) return;
-    try {
-      navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]).then(function () { toast('Đã copy — mở Zalo, dán (Ctrl+V)'); })
-        .catch(function () { toast('Máy không cho copy ảnh – chuột phải vào ảnh → Lưu ảnh'); });
-    } catch (e) { toast('Trình duyệt không hỗ trợ copy ảnh – chuột phải vào ảnh → Lưu ảnh'); }
+  // Tải tất cả ảnh (đã đóng dấu) về máy rồi mở Zalo để gửi.
+  function taiVaMoZalo() {
+    var ds = S.gioAnh.map(function (m) { return S.byMa[m]; }).filter(Boolean), cl = window.ANH_GUI.CHAT_LUONG.chuan, dt = doiTuongAnh();
+    GA.taiVe = { xong: 0, tong: ds.length }; capNutAnh();
+    var buoc = Promise.resolve(), loi = 0;
+    ds.forEach(function (p, i) {
+      buoc = buoc.then(function () {
+        return window.ANH_GUI.taiAnh(anhCua(p.ma)[0], cl.s).then(function (b) { return window.ANH_GUI.veAnh(b, thongTinAnh(p, dt), { px: cl.px, q: cl.q }); })
+          .then(function (jpg) { var a2 = document.createElement('a'); a2.href = URL.createObjectURL(jpg); a2.download = String(p.ma).replace(/[^\w.-]+/g, '_') + '.jpg'; document.body.appendChild(a2); a2.click(); setTimeout(function () { a2.remove(); }, 2000); })
+          .catch(function () { loi++; }).then(function () { GA.taiVe.xong = i + 1; capNutAnh(); return new Promise(function (r) { setTimeout(r, 400); }); });
+      });
+    });
+    buoc.then(function () {
+      GA.taiVe = null; capNutAnh();
+      var b = $('ga-mo-zalo'); if (b) b.hidden = false;
+      toast('Đã tải ' + (ds.length - loi) + ' ảnh' + (loi ? ' (lỗi ' + loi + ')' : '') + ' – mở Zalo, chọn ảnh vừa tải để gửi');
+    });
   }
+
 
   // ============================================================
   // IN TEM GIÁ (đại lý / nhân viên): giỏ tem -> chọn khổ -> in (hoặc Lưu PDF).
@@ -1379,9 +1389,7 @@
       case 'anh-chon-het': { var truoc = S.gioAnh.length; dsHienThi().filter(function (p) { return anhCua(p.ma).length && S.gioAnh.indexOf(p.ma) < 0; }).slice(0, Math.max(0, GA_TOI_DA - S.gioAnh.length)).forEach(function (p) { S.gioAnh.push(p.ma); }); luuGioAnh(); veLai(); toast(S.gioAnh.length > truoc ? 'Đã thêm ' + (S.gioAnh.length - truoc) + ' sản phẩm vào giỏ ảnh (' + S.gioAnh.length + ')' : 'Không có thêm sản phẩm có ảnh' + (S.gioAnh.length >= GA_TOI_DA ? ' – giỏ đã đủ ' + GA_TOI_DA : '')); break; }
       case 'ga-xoa-het': if (confirm('Bỏ hết ' + S.gioAnh.length + ' sản phẩm khỏi giỏ ảnh?')) { S.gioAnh = []; LS.set('gioanh', S.gioAnh); GA.vong++; GA.san = null; GA.cache = {}; GA.tienDo = 0; dongSheet(); veThanhAnh(); veLai(); } break;
       case 'ga-gui': gaGui(); break;
-      case 'ga-pc': moCopyPC(0); break;
-      case 'ga-pc-copy': copyAnhPC(); break;
-      case 'ga-pc-tiep': moCopyPC((GA.pc ? GA.pc.i : 0) + 1); break;
+      case 'ga-tai': taiVaMoZalo(); break;
       case 'them-anh': { var ok1 = themAnh(el.getAttribute('data-ma')); el.classList.toggle('on', S.gioAnh.indexOf(el.getAttribute('data-ma')) >= 0); if (ok1) toast('Đã thêm vào giỏ ảnh (' + S.gioAnh.length + ' mã)'); break; }
       case 'gio-hang': menu.hidden = true; moGioHang(); break;
       case 'don-cua-toi': menu.hidden = true; moDonCuaToi(); break;

@@ -456,3 +456,6 @@ body.che-xem main{padding:0 0 30px;max-width:720px}
 @keyframes nhapnhay{50%{box-shadow:0 0 0 6px rgba(1,64,255,.25)}}
 #sheet .sh-foot [data-act=ga-xoa-het]{flex:0 0 auto;width:auto;padding:0 16px}
 .ga-nut .btn{font-size:14.5px;line-height:1.25;white-space:normal}
+.ga-zalo{margin-top:12px;padding:10px 12px;border-radius:12px;background:#FFF4DE;color:#7A4A00;font-size:13.5px;line-height:1.5}
+.ga-zalo .btn{width:auto;margin-top:8px;display:inline-flex}
+.ga-tai-ghi{background:var(--bg2);color:var(--t1)}
