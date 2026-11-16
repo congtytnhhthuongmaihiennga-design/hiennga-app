@@ -72,7 +72,7 @@
       var ds = sao(data);
       ds.forEach(function (x) { var m = String(x.dg).match(/(\d+) viên\/thùng · ([\d.]+) m²/); if (x.dvt === 'm²' && m) { var mv = Number(m[2]) / Number(m[1]); x.m2Vien = Math.round(mv * 10000) / 10000; if (x.ny) { x.nyV = Math.round(x.ny * mv / 100) * 100; x.nyVTu = 1; } if (x.dl) { x.dlV = Math.round(x.dl * mv / 100) * 100; x.dlVTu = 1; } } });
       if (!sess) ds.forEach(function (x) { x.dl = 0; x.dlV = 0; });
-      return tre({ status: 'ok', data: ds, luc: new Date().toISOString(), capNhat: '2026-11-05T08:00:00+07:00', daDangNhap: !!sess, chuaCfg: sess ? sao(chuaCfg) : [], anh: (function () { var o = {}; ds.filter(function (x) { return x.nhom === 'Gạch'; }).slice(0, ANH_THU.length).forEach(function (x, i) { o[x.ma] = [ANH_THU[i]]; }); return o; })() });
+      return tre({ status: 'ok', data: ds, luc: new Date().toISOString(), capNhat: '2026-11-05T08:00:00+07:00', daDangNhap: !!sess, chuaCfg: sess ? sao(chuaCfg) : [], anh: (function () { var o = {}; ds.filter(function (x) { return x.nhom === 'Gạch'; }).forEach(function (x, i) { o[x.ma] = [ANH_THU[i % ANH_THU.length]]; }); return o; })() });
     }
     if (action === 'getTonKho') {
       if (!sess) return tre({ status: 'error', msg: 'need_login' });

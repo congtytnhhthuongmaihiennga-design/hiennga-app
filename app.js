@@ -305,15 +305,15 @@
   function dongPhu(p) {
     return '<div class="row-sub"><span class="ma">' + esc(p.ma) + '</span>' + (p.hang ? ' · ' + esc(tenHang(p.hang)) : '') + (p._vt ? ' · ' + p._vt + ' viên/thùng' : '') + '</div>';
   }
-  function oChon(p) { if (!S.chonAnh) return ''; var co = S.gioAnh.indexOf(p.ma) >= 0; return '<span class="o-chon' + (co ? ' co' : '') + (anhCua(p.ma).length ? '' : ' khong-anh') + '">' + (co ? '✓' : '') + '</span>'; }
+  function oChon(p) { if (!anhCua(p.ma).length) return ''; var co = S.gioAnh.indexOf(p.ma) >= 0; return '<span class="o-chon' + (co ? ' co' : '') + '" data-anh-tick="' + esc(p.ma) + '" role="checkbox" aria-checked="' + co + '" title="Thêm vào giỏ ảnh">' + (co ? '✓' : '') + '</span>'; }
   function dong(p) {
-    return '<button type="button" class="row' + (S.chonAnh ? ' dang-chon' : '') + '" data-sp="' + esc(p.ma) + '">' + oChon(p) + oAnh(p) +
+    return '<button type="button" class="row' + '' + '" data-sp="' + esc(p.ma) + '">' + oChon(p) + oAnh(p) +
       '<div class="row-info"><div class="row-ten">' + esc(p._ten) + '</div>' + dongPhu(p) +
       '<div class="row-gia">' + htmlGia(p) + '</div></div>' +
       '<div class="row-ton">' + nhanCap(p) + nhanTon(p) + '</div></button>';
   }
   function the(p) {
-    return '<button type="button" class="card' + (S.chonAnh ? ' dang-chon' : '') + '" data-sp="' + esc(p.ma) + '">' + oChon(p) + oAnh(p, '', 0, true) +
+    return '<button type="button" class="card' + '' + '" data-sp="' + esc(p.ma) + '">' + oChon(p) + oAnh(p, '', 0, true) +
       '<div class="card-body"><div class="row-ten">' + esc(p._ten) + '</div>' + dongPhu(p) +
       '<div class="gia-o">' + htmlGia(p) + '</div><div class="card-ton">' + nhanCap(p) + nhanTon(p) + '</div></div></button>';
   }
@@ -486,9 +486,8 @@
     var chips = '<button type="button" class="chip' + (nl ? ' loc-on' : '') + '" data-act="loc">' + ic('loc', 'ic-sm') + 'Lọc' + (nl ? ' (' + nl + ')' : '') + '</button>';
     // Đã đăng nhập: lọc nhanh "Còn hàng" (bỏ mã tồn ≤ 0).
     if (S.sess && S.ton) chips += '<button type="button" class="chip chip-ton' + (S.chiConHang ? ' on' : '') + '" data-act="con-hang"><span class="cham"></span>Còn hàng</button>';
-    chips += '<button type="button" class="chip' + (S.chonAnh ? ' on' : '') + '" data-act="chon-anh">' + ic('anh', 'ic-sm') + (S.chonAnh ? 'Đang chọn ảnh' : 'Chọn ảnh gửi khách') + '</button>';
-    if (S.chonAnh) chips += '<button type="button" class="chip" data-act="anh-chon-het">Chọn hết mã có ảnh</button>' + (S.gioAnh.length ? '<button type="button" class="chip" data-act="anh-bo-het">Bỏ chọn</button>' : '');
-    if (S.sess && !S.chonAnh) chips += '<button type="button" class="chip" data-act="tem-ds">' + ic('tag', 'ic-sm') + 'In tem cả danh sách</button>';
+    chips += '<button type="button" class="chip" data-act="anh-chon-het">' + ic('anh', 'ic-sm') + 'Chọn ảnh cả danh sách</button>';
+    if (S.sess) chips += '<button type="button" class="chip" data-act="tem-ds">' + ic('tag', 'ic-sm') + 'In tem cả danh sách</button>';
     if (dsHang.length > 1) chips += '<button type="button" class="chip' + (S.hang ? '' : ' on') + '" data-hang="">Tất cả hãng</button>' +
       dsHang.map(function (h) {
         var l = logoHang(h);
@@ -546,6 +545,7 @@
     document.body.style.overflow = 'hidden';
   }
   function dongSheet(chiAn) {
+    setTimeout(function () { if (S.gioAnh) veThanhAnh(); }, 0); // sau khi đóng bảng
     var s = $('sheet');
     if (!chiAn && s.getAttribute('data-loai') === 'sp' && S.sp) {
       // Đóng chi tiết = bỏ "sp" khỏi địa chỉ (Back nếu mở từ trong app).
@@ -977,139 +977,182 @@
   }
 
   // ============================================================
-  // GIỎ ẢNH GỬI KHÁCH (giống Sale tool): chọn tối đa 60 mã → ảnh có dải mã · kích thước · giá → gửi Zalo theo lượt.
-  // Giá in theo chế độ: Khách lẻ (giá niêm yết) / Đại lý (thêm giá ĐL – chỉ nhân viên, quản trị) / Không in giá.
-  // Đại lý dùng app: chỉ in giá niêm yết, chân ảnh là tên + SĐT cửa hàng của đại lý (không lộ Hiển Nga).
+  // GIỎ ẢNH (theo mô tả Sales Tool): nhiều sản phẩm × 1 ảnh/sản phẩm → ảnh có dải mã · kích thước · giá ở đáy
+  // → gửi Zalo theo ĐỢT (tối đa 10 ảnh và ~20 MB/đợt). Điện thoại: chuẩn bị NGẦM đợt kế tiếp để bấm là mở
+  // bảng chia sẻ ngay (trình duyệt chỉ cho share() trong lúc chạm). Máy tính: copy từng ảnh rồi Ctrl+V vào Zalo.
+  // Đối tượng nhận: Khách lẻ (chỉ giá niêm yết) / Đại lý (thêm giá ĐL – chỉ nhân viên, quản trị).
+  // Đối tượng KHÔNG lưu giữa các lần mở (tránh lỡ gửi giá đại lý cho khách lẻ). Chất lượng thì nhớ.
   // ============================================================
-  var TOI_DA_ANH = 60, ANH_MOI_LUOT = 8, MB_MOI_LUOT = 20;
-  S.gioAnh = LS.get('gioanh') || []; S.chonAnh = false; S.anhSan = null;
+  var GA_TOI_DA = 100, GA_LUOT_MAC_DINH = 10, GA_MB = 20, GA_LUONG = 3;
+  S.gioAnh = LS.get('gioanh') || [];
+  var GA = { tienDo: 0, luot: GA_LUOT_MAC_DINH, cache: {}, san: null, hen: null, vong: 0, dt: 'le', cl: LS.get('ga_cl') || 'chuan', pc: null };
   S.anhCfg = LS.get('anhcfg') || {};
-  function luuGioAnh() { LS.set('gioanh', S.gioAnh); S.anhSan = null; veThanhAnh(); }
   function laNoiBoAnh() { return S.sess && (S.sess.role === 'admin' || S.sess.role === 'nv'); }
-  function cfgAnh() {
-    var c = S.anhCfg, nb = laNoiBoAnh();
-    if (c.vai !== (S.sess ? S.sess.role : 'khach')) { // đổi tài khoản -> đặt lại mặc định theo vai trò
-      c = S.anhCfg = { vai: S.sess ? S.sess.role : 'khach', che: 'ny', chan: true,
-        tenCH: nb || !S.sess ? (CFG.LIEN_HE_TEN || CFG.TEN_APP || '') : (S.sess.tenCty || S.sess.name || ''), sdtCH: nb || !S.sess ? (CFG.LIEN_HE_SDT || '') : (S.sess.sdt || '') };
-    }
-    if (c.che === 'dl' && !nb) c.che = 'ny';
+  function laDienThoai() {
+    try { return !!(navigator.share && navigator.canShare && navigator.canShare({ files: [new File([new Blob(['x'], { type: 'image/jpeg' })], 'a.jpg', { type: 'image/jpeg' })] })); } catch (e) { return false; }
+  }
+  function cfgAnh() { // chân ảnh: tên + SĐT cửa hàng (đại lý = cửa hàng của đại lý, không lộ Hiển Nga)
+    var c = S.anhCfg, nb = laNoiBoAnh() || !S.sess;
+    if (c.vai !== (S.sess ? S.sess.role : 'khach')) c = S.anhCfg = { vai: S.sess ? S.sess.role : 'khach', chan: true,
+      tenCH: nb ? (CFG.LIEN_HE_TEN || CFG.TEN_APP || '') : (S.sess.tenCty || S.sess.name || ''), sdtCH: nb ? (CFG.LIEN_HE_SDT || '') : (S.sess.sdt || '') };
     return c;
   }
+  function doiTuongAnh() { return laNoiBoAnh() && GA.dt === 'dl' ? 'dl' : 'le'; }
+  function datLaiGA(giuTienDo) { // giỏ / đối tượng / chất lượng đổi -> bỏ ảnh đã chuẩn bị, chuẩn bị lại
+    GA.vong++; GA.san = null; GA.cache = {}; if (!giuTienDo) { GA.tienDo = 0; GA.luot = GA_LUOT_MAC_DINH; }
+    clearTimeout(GA.hen); GA.hen = setTimeout(gaNen, 350);
+  }
+  function luuGioAnh() { LS.set('gioanh', S.gioAnh); veThanhAnh(); if ($('sheet').getAttribute('data-loai') === 'anh' && !$('sheet').hidden) datLaiGA(); }
   function themAnh(ma) {
     var i = S.gioAnh.indexOf(ma);
     if (i >= 0) { S.gioAnh.splice(i, 1); luuGioAnh(); return false; }
-    if (!anhCua(ma).length) { toast('Mã này chưa có ảnh'); return false; }
-    if (S.gioAnh.length >= TOI_DA_ANH) { toast('Tối đa ' + TOI_DA_ANH + ' mã mỗi lần gửi'); return false; }
+    if (!anhCua(ma).length) { toast('Mã ' + ma + ' chưa có ảnh trong Sheet'); return false; }
+    if (S.gioAnh.length >= GA_TOI_DA) { toast('Giỏ ảnh tối đa ' + GA_TOI_DA + ' sản phẩm'); return false; }
     S.gioAnh.push(ma); luuGioAnh(); return true;
   }
-  function veThanhAnh() {
-    var t = $('gio-anh-bar');
-    if (!t) { t = document.createElement('div'); t.id = 'gio-anh-bar'; document.body.appendChild(t); }
-    var n = S.gioAnh.length;
-    t.hidden = !(n || S.chonAnh) || !$('login').hidden;
-    t.innerHTML = '<span>' + ic('anh', 'ic-sm') + (n ? '<b>' + n + '</b> mã đã chọn' : 'Bấm vào sản phẩm để chọn ảnh') + '</span>' +
-      (S.chonAnh ? '<button type="button" class="btn btn-vien btn-nho" data-act="chon-anh">Xong</button>' : '') +
-      (n ? '<button type="button" class="btn btn-chinh btn-nho" data-act="gio-anh">Xem & gửi</button>' : '');
+  function veThanhAnh() { // nút nổi "🖼️ Giỏ ảnh (N)"
+    var t = $('gio-anh-nut');
+    if (!t) { t = document.createElement('button'); t.type = 'button'; t.id = 'gio-anh-nut'; t.setAttribute('data-act', 'gio-anh'); document.body.appendChild(t); }
+    t.hidden = !S.gioAnh.length || !$('login').hidden || ($('sheet').getAttribute('data-loai') === 'anh' && !$('sheet').hidden);
+    t.innerHTML = '🖼️ Giỏ ảnh <b>' + S.gioAnh.length + '</b>';
   }
-  function thongTinAnh(p) {
-    var c = cfgAnh(), gia = [], dv = p.dvt ? '/' + p.dvt : '';
-    if (c.che !== 'khong') {
-      if (p.ny > 0) gia.push({ nhan: 'Giá niêm yết', so: tien(p.ny) + dv + (p.m2Vien && p.nyV > 0 ? '  ·  ' + tien(p.nyV) + '/viên' : ''), mau: 'gia' });
-      if (c.che === 'dl' && laNoiBoAnh() && p.dl > 0) gia.push({ nhan: 'Giá đại lý', so: tien(p.dl) + dv + (p.m2Vien && p.dlV > 0 ? '  ·  ' + tien(p.dlV) + '/viên' : ''), mau: 'dl' });
-      if (!gia.length) gia.push({ nhan: 'Giá', so: 'Liên hệ', mau: 'gia' });
-    }
-    return { ma: p.ma, ten: p._ten, kc: p._kc || '', gia: gia, ghi: p.dg || '', chan: c.chan ? [c.tenCH, c.sdtCH].filter(String).join(' · ') : '', logo: c.chan && (laNoiBoAnh() || !S.sess) ? CFG.LOGO : '' };
+  function thongTinAnh(p, dt) {
+    var c = cfgAnh(), gia = [], dv = p.dvt ? '/' + p.dvt : ''; // đơn vị đúng theo sản phẩm (m², viên, bao, bộ…)
+    if (p.ny > 0) gia.push({ nhan: 'Giá niêm yết', so: tien(p.ny) + dv + (p.m2Vien && p.nyV > 0 ? '  ·  ' + tien(p.nyV) + '/viên' : ''), mau: 'gia' });
+    if (dt === 'dl' && p.dl > 0) gia.push({ nhan: 'Giá đại lý', so: tien(p.dl) + dv + (p.m2Vien && p.dlV > 0 ? '  ·  ' + tien(p.dlV) + '/viên' : ''), mau: 'dl' });
+    return { ma: p.ma, kc: p._kc || '', gia: gia, ghi: dt === 'dl' && p.dg ? p.dg : '',
+      chan: c.chan ? [c.tenCH, c.sdtCH].filter(String).join(' · ') : '', logo: c.chan && (laNoiBoAnh() || !S.sess) ? CFG.LOGO : '' };
   }
-  function tinNhanAnh() {
-    var c = cfgAnh(), ds = S.gioAnh.map(function (m) { return S.byMa[m]; }).filter(Boolean);
-    var dong = ds.map(function (p, i) {
+  function tinNhanAnh(ds) {
+    var dt = doiTuongAnh(), c = cfgAnh();
+    return ds.map(function (p, i) {
       var t = (ds.length > 1 ? (i + 1) + ') ' : '') + p._ten + '\nMã: ' + p.ma + (p._kc ? ' · KT ' + p._kc : '');
-      if (c.che !== 'khong') {
-        t += '\nGiá niêm yết: ' + (p.ny > 0 ? tien(p.ny) + (p.dvt ? '/' + p.dvt : '') + (p.m2Vien && p.nyV > 0 ? ' (≈ ' + tien(p.nyV) + '/viên)' : '') : 'liên hệ');
-        if (c.che === 'dl' && laNoiBoAnh() && p.dl > 0) t += '\nGiá đại lý: ' + tien(p.dl) + (p.dvt ? '/' + p.dvt : '');
-      }
-      if (p.dg) t += '\nQuy cách: ' + p.dg;
+      t += '\nGiá niêm yết: ' + (p.ny > 0 ? tien(p.ny) + (p.dvt ? '/' + p.dvt : '') + (p.m2Vien && p.nyV > 0 ? ' (≈ ' + tien(p.nyV) + '/viên)' : '') : 'liên hệ');
+      if (dt === 'dl' && p.dl > 0) t += '\nGiá đại lý: ' + tien(p.dl) + (p.dvt ? '/' + p.dvt : '');
       return t;
-    });
-    return dong.join('\n\n') + (c.chan && (c.tenCH || c.sdtCH) ? '\n\n' + [c.tenCH, c.sdtCH].filter(String).join(' – ') : '');
+    }).join('\n\n') + (c.chan && (c.tenCH || c.sdtCH) ? '\n\n' + [c.tenCH, c.sdtCH].filter(String).join(' – ') : '');
   }
-  function coChiaSeFile() {
-    try { return !!(navigator.canShare && navigator.canShare({ files: [new File([new Blob(['x'], { type: 'image/jpeg' })], 'a.jpg', { type: 'image/jpeg' })] })); } catch (e) { return false; }
-  }
-  function chiaLuot(ds) { // mỗi lượt tối đa 8 ảnh và ~20 MB (Zalo / bảng chia sẻ hay rớt khi gửi nhiều)
-    var luot = [], cur = [], mb = 0;
-    ds.forEach(function (f) { var s = f.size / 1048576; if (cur.length && (cur.length >= ANH_MOI_LUOT || mb + s > MB_MOI_LUOT)) { luot.push(cur); cur = []; mb = 0; } cur.push(f); mb += s; });
-    if (cur.length) luot.push(cur);
-    return luot;
-  }
-  function moGioAnh() {
-    var c = cfgAnh(), nb = laNoiBoAnh(), ds = S.gioAnh.map(function (m) { return S.byMa[m]; }).filter(Boolean);
-    var html = dauSheet('Giỏ ảnh gửi khách') + '<div class="sh-body">';
-    if (!ds.length) html += '<div class="trong">' + ic('anh') + '<b>Chưa chọn ảnh nào</b>Ở danh sách bấm "Chọn ảnh gửi khách" rồi chạm vào các sản phẩm (tối đa ' + TOI_DA_ANH + ' mã).</div>';
-    else {
-      html += '<div class="sec">In giá trên ảnh</div><div class="chips wrap">' + [['ny', 'Giá niêm yết'], nb ? ['dl', 'Niêm yết + Giá đại lý'] : null, ['khong', 'Không in giá']].filter(Boolean)
-        .map(function (x) { return '<button type="button" class="chip' + (c.che === x[0] ? ' on' : '') + '" data-anh-che="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>' +
-        (c.che === 'dl' ? '<p class="mo canh-dl">⚠️ Ảnh có giá đại lý – chỉ gửi cho đại lý, không gửi khách lẻ.</p>' : '') +
-        '<label class="ck" style="margin-top:10px"><input type="checkbox" data-anh-cfg="chan"' + (c.chan ? ' checked' : '') + '> Ghi tên cửa hàng + SĐT ở chân ảnh</label>' +
-        (c.chan ? '<div class="hang2" style="margin-top:6px"><label>Tên cửa hàng<input data-anh-cfg="tenCH" value="' + esc(c.tenCH || '') + '"></label><label>SĐT<input data-anh-cfg="sdtCH" inputmode="tel" value="' + esc(c.sdtCH || '') + '"></label></div>' : '') +
-        '<div class="sec">' + ds.length + ' mã · xem trước ảnh đầu</div><div class="anh-xem" id="anh-xem"><div class="mo">Đang tạo ảnh xem trước…</div></div>' +
-        '<div class="anh-ds">' + ds.map(function (p) { return '<div class="anh-o-gio">' + oAnh(p) + '<small>' + esc(p.ma) + '</small><button type="button" class="anh-bo" data-anh-bo="' + esc(p.ma) + '" aria-label="Bỏ">✕</button></div>'; }).join('') + '</div>' +
-        '<p class="mo" style="margin-top:10px">' + (coChiaSeFile() ? 'Bấm <b>Chuẩn bị ảnh</b> → chờ xong → bấm <b>Gửi lượt</b> → chọn Zalo. Mỗi lượt tối đa ' + ANH_MOI_LUOT + ' ảnh cho Zalo không rớt ảnh.' : 'Máy tính: bấm <b>Tải ảnh về máy</b> rồi kéo ảnh vào Zalo, hoặc bấm vào từng ảnh để copy rồi Ctrl+V vào khung chat.') + '</p>';
+  // ---------- Chuẩn bị ngầm đợt kế tiếp ----------
+  function khoaGA(ma) { return ma + '|' + doiTuongAnh() + '|' + GA.cl + '|' + JSON.stringify(cfgAnh()); }
+  function gaNen() {
+    if (!laDienThoai() || !S.gioAnh.length) { capNutAnh(); return; }
+    var vong = GA.vong, cua = S.gioAnh.slice(GA.tienDo, GA.tienDo + GA.luot), giu = {};
+    cua.forEach(function (m) { giu[khoaGA(m)] = 1; });
+    Object.keys(GA.cache).forEach(function (k) { if (!giu[k]) delete GA.cache[k]; }); // không giữ ảnh ngoài đợt kế tiếp (đỡ nặng máy)
+    var hang = cua.filter(function (m) { var c = GA.cache[khoaGA(m)]; return !c || (c.st !== 'xong' && c.st !== 'loi' && c.st !== 'dang'); });
+    var cl = window.ANH_GUI.CHAT_LUONG[GA.cl], dt = doiTuongAnh();
+    function mot() {
+      if (vong !== GA.vong) return Promise.resolve();
+      var m = hang.shift(); if (!m) return Promise.resolve();
+      var p = S.byMa[m], k = khoaGA(m); GA.cache[k] = { st: 'dang' };
+      if (!p) { GA.cache[k] = { st: 'loi' }; return mot(); }
+      return window.ANH_GUI.taiAnh(anhCua(m)[0], cl.s).then(function (b) { return window.ANH_GUI.veAnh(b, thongTinAnh(p, dt), { px: cl.px, q: cl.q }); })
+        .then(function (jpg) { if (vong === GA.vong) GA.cache[k] = { st: 'xong', file: new File([jpg], String(m).replace(/[^\w.-]+/g, '_') + '.jpg', { type: 'image/jpeg' }) }; })
+        .catch(function (e) { if (vong === GA.vong) GA.cache[k] = { st: 'loi', loi: e.message }; })
+        .then(function () { capNutAnh(); return mot(); });
     }
-    html += '</div>';
-    if (ds.length) html += '<div class="sh-foot"><button type="button" class="btn btn-vien" data-act="anh-copy-chu">' + ic('copy') + 'Copy chữ</button><span id="anh-nut-gui">' + nutGuiAnh() + '</span></div>';
-    var cuon = $('sheet').getAttribute('data-loai') === 'anh' ? $('sheet').scrollTop : 0;
-    moSheet(html, 'anh'); $('sheet').scrollTop = cuon;
-    if (ds.length) xemTruocAnh(ds[0]);
-  }
-  function nutGuiAnh() {
-    var s = S.anhSan;
-    if (s && s.dang) return '<button type="button" class="btn btn-chinh" disabled>Đang tạo ảnh ' + s.xong + '/' + s.tong + '…</button>';
-    if (!s || !s.luot) return '<button type="button" class="btn btn-chinh" data-act="anh-chuan-bi">' + ic('anh') + (coChiaSeFile() ? 'Chuẩn bị ' : 'Tạo ') + S.gioAnh.length + ' ảnh</button>';
-    if (!coChiaSeFile()) return '<button type="button" class="btn btn-chinh" data-act="anh-tai-ve">⬇ Tải ' + s.files.length + ' ảnh về máy</button>';
-    var i = s.da || 0;
-    return i < s.luot.length ? '<button type="button" class="btn btn-chinh nhap-nhay" data-act="anh-gui">Gửi lượt ' + (i + 1) + '/' + s.luot.length + ' (' + s.luot[i].length + ' ảnh)</button>'
-      : '<button type="button" class="btn btn-vien" data-act="anh-gui-lai">✓ Đã gửi hết – gửi lại</button>';
-  }
-  function capNutAnh() { var e = $('anh-nut-gui'); if (e) e.innerHTML = nutGuiAnh(); }
-  function xemTruocAnh(p) {
-    var o = $('anh-xem'); if (!o) return;
-    var khoa = JSON.stringify([p.ma, cfgAnh()]); o.setAttribute('data-k', khoa);
-    window.ANH_GUI.taiAnh(anhCua(p.ma)[0]).then(function (b) { return window.ANH_GUI.veAnh(b, thongTinAnh(p)); }).then(function (jpg) {
-      if (o.getAttribute('data-k') !== khoa) return;
-      o.innerHTML = '<img alt="" src="' + URL.createObjectURL(jpg) + '">';
-    }).catch(function (e) { o.innerHTML = '<div class="mo">Không tải được ảnh: ' + esc(e.message) + ' – kiểm tra ảnh đã mở quyền xem trên Drive.</div>'; });
-  }
-  function chuanBiAnh() {
-    var ds = S.gioAnh.map(function (m) { return S.byMa[m]; }).filter(Boolean), s = S.anhSan = { dang: true, xong: 0, tong: ds.length, files: [], loi: [] };
     capNutAnh();
-    var buoc = Promise.resolve();
-    ds.forEach(function (p) { // tải tuần tự (tải dồn Drive hay từ chối)
-      buoc = buoc.then(function () {
-        if (S.anhSan !== s) return;
-        return window.ANH_GUI.taiAnh(anhCua(p.ma)[0]).then(function (b) { return window.ANH_GUI.veAnh(b, thongTinAnh(p)); })
-          .then(function (jpg) { s.files.push(new File([jpg], String(p.ma).replace(/[^\w.-]+/g, '_') + '.jpg', { type: 'image/jpeg' })); })
-          .catch(function () { s.loi.push(p.ma); }).then(function () { s.xong++; capNutAnh(); });
-      });
-    });
-    buoc.then(function () {
-      if (S.anhSan !== s) return;
-      s.dang = false; s.luot = chiaLuot(s.files); s.da = 0;
-      try { navigator.clipboard.writeText(tinNhanAnh()).catch(function () { }); } catch (e) { }
-      toast('Đã tạo ' + s.files.length + ' ảnh' + (s.loi.length ? ' (lỗi ' + s.loi.length + ' mã: ' + s.loi.slice(0, 3).join(', ') + ')' : '') + ' · đã copy sẵn chữ');
+    var luong = []; for (var i = 0; i < GA_LUONG; i++) luong.push(mot()); // 3 ảnh song song, không hơn (Google trả 429)
+    Promise.all(luong).then(function () {
+      if (vong !== GA.vong) return;
+      var files = [], mb = 0, xuLy = 0;
+      for (var j = 0; j < cua.length; j++) { // gom vào đợt, dừng khi tổng ≥ ~20 MB
+        var c = GA.cache[khoaGA(cua[j])];
+        if (!c || c.st === 'loi') { xuLy++; continue; }
+        if (c.st !== 'xong') break;
+        var s = c.file.size / 1048576;
+        if (files.length && mb + s > GA_MB) break;
+        files.push(c.file); mb += s; xuLy++;
+      }
+      GA.san = { files: files, xuLy: xuLy, mb: mb };
+      if (!files.length && xuLy) { toast('Không tải được ' + xuLy + ' ảnh – bỏ qua'); GA.tienDo += xuLy; GA.san = null; if (GA.tienDo < S.gioAnh.length) gaNen(); else xongGA(); return; }
       capNutAnh();
     });
   }
-  function guiLuotAnh() {
-    var s = S.anhSan; if (!s || !s.luot) return;
-    var luot = s.luot[s.da || 0]; if (!luot) return;
-    navigator.share({ files: luot }).then(function () { s.da = (s.da || 0) + 1; capNutAnh(); })
-      .catch(function (e) { if (e && e.name === 'AbortError') return; toast('Không mở được bảng chia sẻ – thử Tải ảnh về máy'); taiAnhVe(luot); });
+  function demDot() {
+    var cua = S.gioAnh.slice(GA.tienDo, GA.tienDo + GA.luot), xong = cua.filter(function (m) { var c = GA.cache[khoaGA(m)]; return c && (c.st === 'xong' || c.st === 'loi'); }).length;
+    return { xong: xong, tong: cua.length };
   }
-  function taiAnhVe(files) {
-    (files || (S.anhSan && S.anhSan.files) || []).forEach(function (f, i) {
-      setTimeout(function () { var a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(function () { a.remove(); }, 1500); }, i * 400);
+  function nutGuiAnh() {
+    var n = S.gioAnh.length;
+    if (!n) return '';
+    if (!laDienThoai()) return '<button type="button" class="btn btn-chinh" data-act="ga-pc">🖥 Copy từng ảnh để dán Zalo</button>';
+    if (GA.san && GA.san.files.length) return '<button type="button" class="btn btn-chinh nhap-nhay" data-act="ga-gui">📤 Gửi ' + GA.san.files.length + ' ảnh qua Zalo (đã gửi ' + GA.tienDo + '/' + n + ')</button>';
+    var d = demDot();
+    return '<button type="button" class="btn btn-chinh" disabled>⏳ ' + (GA.tienDo ? 'Đang chuẩn bị đợt tiếp theo: ' + d.xong + '/' + d.tong + ' (đã gửi ' + GA.tienDo + '/' + n + ')' : 'Đang chuẩn bị ảnh: ' + d.xong + '/' + d.tong) + '</button>';
+  }
+  function capNutAnh() { var e = $('ga-nut'); if (e) e.innerHTML = nutGuiAnh(); }
+  function xongGA() {
+    toast('Đã gửi xong ' + S.gioAnh.length + ' ảnh');
+    GA.tienDo = 0; GA.san = null; GA.cache = {}; GA.vong++; dongSheet(); veThanhAnh();
+  }
+  function gaGui() { // gọi share() NGAY trong lúc chạm – ảnh đã chuẩn bị sẵn
+    var san = GA.san; if (!san || !san.files.length) return;
+    var data = { files: san.files };
+    if (S.gioAnh.length === 1) { // chỉ 1 sản phẩm: kèm chữ + link ảnh gốc (nhiều ảnh mà kèm chữ thì Zalo Android chỉ nhận 1 ảnh)
+      var p = S.byMa[S.gioAnh[0]], id = window.ANH_GUI.idDrive(anhCua(S.gioAnh[0])[0]);
+      data.text = tinNhanAnh([p]) + (id ? '\nBấm xem hình ảnh chi tiết: https://drive.google.com/file/d/' + id + '/view' : '');
+    }
+    if (navigator.canShare && !navigator.canShare(data)) { giamDot(san); return; }
+    navigator.share(data).then(function () {
+      GA.tienDo += san.xuLy; GA.san = null;
+      Object.keys(GA.cache).forEach(function (k) { if (GA.cache[k].file && san.files.indexOf(GA.cache[k].file) >= 0) delete GA.cache[k]; });
+      if (GA.tienDo >= S.gioAnh.length) xongGA(); else { capNutAnh(); gaNen(); }
+    }).catch(function (e) {
+      if (e && e.name === 'AbortError') return; // tự đóng bảng chia sẻ: giữ ảnh, bấm gửi lại được
+      giamDot(san);
     });
+  }
+  function giamDot(san) { // máy không chịu nổi -> tự giảm số ảnh/đợt
+    if (san.files.length <= 1) { toast('Ảnh quá nặng – chọn chất lượng Nhanh hoặc Chuẩn rồi thử lại'); return; }
+    GA.luot = Math.max(1, Math.floor(san.files.length / 2));
+    toast('Ảnh nặng, tự giảm còn ' + GA.luot + ' ảnh/đợt');
+    GA.san = null; GA.vong++; gaNen();
+  }
+  // ---------- Bảng giỏ ảnh ----------
+  function moGioAnh() {
+    var ds = S.gioAnh.map(function (m) { return S.byMa[m]; }).filter(Boolean), c = cfgAnh(), dt = doiTuongAnh();
+    if (ds.length !== S.gioAnh.length) { S.gioAnh = ds.map(function (p) { return p.ma; }); LS.set('gioanh', S.gioAnh); }
+    var html = dauSheet('Giỏ ảnh đã chọn (' + ds.length + ')') + '<div class="sh-body">';
+    if (!ds.length) html += '<div class="trong">' + ic('anh') + '<b>Giỏ ảnh trống</b>Ở danh sách sản phẩm, bấm ô vuông ở góc ảnh để chọn (tối đa ' + GA_TOI_DA + ' sản phẩm).</div>';
+    else {
+      html += '<p class="mo ga-ghi">Chọn bao nhiêu mẫu cũng được. Khi gửi, app tự chia thành từng đợt tối đa ' + GA_LUOT_MAC_DINH + ' ảnh qua Zalo và chuẩn bị sẵn đợt kế tiếp.</p>';
+      if (laNoiBoAnh()) html += '<div class="sec">Gửi cho</div><div class="chips">' + [['le', 'Khách lẻ'], ['dl', 'Đại lý']].map(function (x) { return '<button type="button" class="chip' + (dt === x[0] ? ' on' : '') + '" data-ga-dt="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>' +
+        (dt === 'dl' ? '<p class="mo canh-dl">⚠️ Ảnh có giá đại lý – chỉ gửi cho đại lý.</p>' : '<p class="mo ga-ghi">Ảnh chỉ in giá niêm yết.</p>');
+      if (laDienThoai()) html += '<div class="sec">Chất lượng ảnh</div><div class="chips">' + Object.keys(window.ANH_GUI.CHAT_LUONG).map(function (k) { return '<button type="button" class="chip' + (GA.cl === k ? ' on' : '') + '" data-ga-cl="' + k + '">' + window.ANH_GUI.CHAT_LUONG[k].ten + '</button>'; }).join('') + '</div>';
+      html += '<label class="ck" style="margin-top:10px"><input type="checkbox" data-ga-cfg="chan"' + (c.chan ? ' checked' : '') + '> Ghi tên cửa hàng + SĐT ở chân ảnh</label>' +
+        (c.chan ? '<div class="form"><div class="hang2" style="margin-top:6px"><label>Tên cửa hàng<input data-ga-cfg="tenCH" value="' + esc(c.tenCH || '') + '"></label><label>SĐT<input data-ga-cfg="sdtCH" inputmode="tel" value="' + esc(c.sdtCH || '') + '"></label></div></div>' : '') +
+        '<div class="sec">Sản phẩm</div><div class="ga-ds">' + ds.map(function (p, i) {
+          return '<div class="ga-dong' + (i < GA.tienDo ? ' da-gui' : '') + '">' + oAnh(p) + '<span><b>' + esc(p._ten) + '</b><small>' + esc(p.ma) + (i < GA.tienDo ? ' · đã gửi' : '') + '</small></span><button type="button" class="ga-bo" data-ga-bo="' + esc(p.ma) + '" aria-label="Bỏ khỏi giỏ">✕</button></div>';
+        }).join('') + '</div>';
+    }
+    html += '</div>';
+    if (ds.length) html += '<div class="sh-foot"><button type="button" class="btn btn-vien" data-act="ga-xoa-het">Xóa hết</button><span id="ga-nut" class="ga-nut">' + nutGuiAnh() + '</span></div>';
+    var cuon = $('sheet').getAttribute('data-loai') === 'anh' ? $('sheet').scrollTop : 0, moMoi = $('sheet').hidden || $('sheet').getAttribute('data-loai') !== 'anh';
+    moSheet(html, 'anh'); $('sheet').scrollTop = cuon; veThanhAnh();
+    if (moMoi && ds.length) { GA.dt = 'le'; datLaiGA(true); } // mỗi lần mở: mặc định Khách lẻ
+  }
+  // ---------- Máy tính: copy từng ảnh (PNG) rồi Ctrl+V vào Zalo ----------
+  function moCopyPC(i) {
+    var ds = S.gioAnh.map(function (m) { return S.byMa[m]; }).filter(Boolean); if (!ds.length) return;
+    i = Math.max(0, Math.min(i || 0, ds.length - 1)); GA.pc = { i: i, blob: null };
+    var p = ds[i];
+    moSheet(dauSheet('Ảnh ' + (i + 1) + '/' + ds.length + ' – ' + p.ma) + '<div class="sh-body"><p class="mo">' + esc(p._ten) + '</p><div class="anh-xem" id="ga-pc-xem"><div class="mo">Đang tạo ảnh…</div></div>' +
+      '<p class="mo" style="margin-top:8px">Bấm <b>Copy ảnh</b> → mở Zalo → bấm vào khung chat → <b>Ctrl+V</b>. Copy không được: chuột phải vào ảnh → Lưu ảnh.</p></div>' +
+      '<div class="sh-foot"><button type="button" class="btn btn-vien" data-act="gio-anh">← Giỏ ảnh</button><button type="button" class="btn btn-chinh" data-act="ga-pc-copy" disabled>Copy ảnh</button>' +
+      (i < ds.length - 1 ? '<button type="button" class="btn btn-vien" data-act="ga-pc-tiep">Ảnh tiếp theo →</button>' : '') + '</div>', 'anh-pc');
+    window.ANH_GUI.taiAnh(anhCua(p.ma)[0], '=s1600').then(function (b) { return window.ANH_GUI.veAnh(b, thongTinAnh(p, doiTuongAnh()), { px: 1600, png: true }); }).then(function (png) {
+      if (!GA.pc || GA.pc.i !== i) return;
+      GA.pc.blob = png; var o = $('ga-pc-xem'); if (o) o.innerHTML = '<img alt="" src="' + URL.createObjectURL(png) + '">';
+      var n = document.querySelector('[data-act=ga-pc-copy]'); if (n) n.disabled = false;
+    }).catch(function (e) { var o = $('ga-pc-xem'); if (o) o.innerHTML = '<div class="mo">Không tải được ảnh: ' + esc(e.message) + '</div>'; });
+  }
+  function copyAnhPC() {
+    var b = GA.pc && GA.pc.blob; if (!b) return;
+    try {
+      navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]).then(function () { toast('Đã copy — mở Zalo, dán (Ctrl+V)'); })
+        .catch(function () { toast('Máy không cho copy ảnh – chuột phải vào ảnh → Lưu ảnh'); });
+    } catch (e) { toast('Trình duyệt không hỗ trợ copy ảnh – chuột phải vào ảnh → Lưu ảnh'); }
   }
 
   // ============================================================
@@ -1254,19 +1297,20 @@
 
   // ---------- Bấm (một chỗ xử lý cho cả app) ----------
   document.addEventListener('click', function (e) {
-    var el = e.target.closest('[data-act],[data-sp],[data-nhom],[data-nav],[data-hang],[data-hang-home],[data-loc],[data-sort],[data-anh],[data-user],[data-tem-kho],[data-tem-sl],[data-loc-kc],[data-gio-sl],[data-don-ht],[data-huy-don],[data-don-loai],[data-don-ngay],[data-xin-mo],[data-xin-ngay],[data-gio-tab],[data-dn],[data-dat-lai],[data-anh-che],[data-anh-bo]');
+    var el = e.target.closest('[data-act],[data-sp],[data-nhom],[data-nav],[data-hang],[data-hang-home],[data-loc],[data-sort],[data-anh],[data-user],[data-tem-kho],[data-tem-sl],[data-loc-kc],[data-gio-sl],[data-don-ht],[data-huy-don],[data-don-loai],[data-don-ngay],[data-xin-mo],[data-xin-ngay],[data-gio-tab],[data-dn],[data-dat-lai],[data-anh-tick],[data-ga-dt],[data-ga-cl],[data-ga-bo]');
     var menu = $('acct-menu');
     if (!menu.hidden && !e.target.closest('#acct-menu') && !(el && el.getAttribute('data-act') === 'menu')) menu.hidden = true;
     if (!el) { if (e.target.id === 'sheet-nen') dongSheet(); return; }
     var a = el.getAttribute('data-act');
-    if (el.hasAttribute('data-sp') && S.chonAnh && !el.closest('#sheet')) { // đang chọn ảnh: chạm = tick / bỏ tick
-      themAnh(el.getAttribute('data-sp'));
-      var oc = el.querySelector('.o-chon'), co = S.gioAnh.indexOf(el.getAttribute('data-sp')) >= 0;
-      if (oc) { oc.classList.toggle('co', co); oc.textContent = co ? '✓' : ''; }
+    if (el.hasAttribute('data-anh-tick')) { // ô vuông ở góc ảnh: thêm / bỏ khỏi giỏ ảnh (không mở chi tiết)
+      e.preventDefault(); themAnh(el.getAttribute('data-anh-tick'));
+      var co = S.gioAnh.indexOf(el.getAttribute('data-anh-tick')) >= 0;
+      el.classList.toggle('co', co); el.textContent = co ? '✓' : ''; el.setAttribute('aria-checked', co);
       return;
     }
-    if (el.hasAttribute('data-anh-che')) { cfgAnh().che = el.getAttribute('data-anh-che'); LS.set('anhcfg', S.anhCfg); S.anhSan = null; moGioAnh(); return; }
-    if (el.hasAttribute('data-anh-bo')) { themAnh(el.getAttribute('data-anh-bo')); moGioAnh(); return; }
+    if (el.hasAttribute('data-ga-dt')) { GA.dt = el.getAttribute('data-ga-dt'); datLaiGA(); moGioAnh(); return; }
+    if (el.hasAttribute('data-ga-cl')) { GA.cl = el.getAttribute('data-ga-cl'); LS.set('ga_cl', GA.cl); datLaiGA(); moGioAnh(); return; }
+    if (el.hasAttribute('data-ga-bo')) { themAnh(el.getAttribute('data-ga-bo')); moGioAnh(); return; }
     if (el.hasAttribute('data-sp')) { S.moTuApp = true; var h = docHash(); h.sp = el.getAttribute('data-sp'); ghiHash(h); return; }
     if (el.hasAttribute('data-nhom')) return diToi(el.getAttribute('data-nhom'), '');
     if (el.hasAttribute('data-nav')) return diToi(el.getAttribute('data-nav'), '');
@@ -1332,15 +1376,13 @@
       }
       case 'gio-tem': menu.hidden = true; moGioTem(); break;
       case 'gio-anh': menu.hidden = true; moGioAnh(); break;
-      case 'chon-anh': S.chonAnh = !S.chonAnh; if (S.chonAnh) { dongSheet(); toast('Chạm vào sản phẩm để chọn ảnh (tối đa ' + TOI_DA_ANH + ' mã)'); } veLai(); veThanhAnh(); break;
-      case 'anh-chon-het': dsHienThi().filter(function (p) { return anhCua(p.ma).length && S.gioAnh.indexOf(p.ma) < 0; }).slice(0, Math.max(0, TOI_DA_ANH - S.gioAnh.length)).forEach(function (p) { S.gioAnh.push(p.ma); }); luuGioAnh(); veLai(); toast('Đã chọn ' + S.gioAnh.length + ' mã'); break;
-      case 'anh-bo-het': S.gioAnh = []; luuGioAnh(); veLai(); break;
+      case 'anh-chon-het': { var truoc = S.gioAnh.length; dsHienThi().filter(function (p) { return anhCua(p.ma).length && S.gioAnh.indexOf(p.ma) < 0; }).slice(0, Math.max(0, GA_TOI_DA - S.gioAnh.length)).forEach(function (p) { S.gioAnh.push(p.ma); }); luuGioAnh(); veLai(); toast(S.gioAnh.length > truoc ? 'Đã thêm ' + (S.gioAnh.length - truoc) + ' sản phẩm vào giỏ ảnh (' + S.gioAnh.length + ')' : 'Không có thêm sản phẩm có ảnh' + (S.gioAnh.length >= GA_TOI_DA ? ' – giỏ đã đủ ' + GA_TOI_DA : '')); break; }
+      case 'ga-xoa-het': if (confirm('Bỏ hết ' + S.gioAnh.length + ' sản phẩm khỏi giỏ ảnh?')) { S.gioAnh = []; LS.set('gioanh', S.gioAnh); GA.vong++; GA.san = null; GA.cache = {}; GA.tienDo = 0; dongSheet(); veThanhAnh(); veLai(); } break;
+      case 'ga-gui': gaGui(); break;
+      case 'ga-pc': moCopyPC(0); break;
+      case 'ga-pc-copy': copyAnhPC(); break;
+      case 'ga-pc-tiep': moCopyPC((GA.pc ? GA.pc.i : 0) + 1); break;
       case 'them-anh': { var ok1 = themAnh(el.getAttribute('data-ma')); el.classList.toggle('on', S.gioAnh.indexOf(el.getAttribute('data-ma')) >= 0); if (ok1) toast('Đã thêm vào giỏ ảnh (' + S.gioAnh.length + ' mã)'); break; }
-      case 'anh-chuan-bi': chuanBiAnh(); break;
-      case 'anh-gui': guiLuotAnh(); break;
-      case 'anh-gui-lai': if (S.anhSan) { S.anhSan.da = 0; capNutAnh(); } break;
-      case 'anh-tai-ve': taiAnhVe(); toast('Đang tải ' + S.anhSan.files.length + ' ảnh về máy'); break;
-      case 'anh-copy-chu': try { navigator.clipboard.writeText(tinNhanAnh()).then(function () { toast('Đã copy chữ – dán vào Zalo'); }).catch(function () { toast('Máy không cho copy – giữ lâu để chép tay'); }); } catch (e2) { toast('Máy không cho copy'); } break;
       case 'gio-hang': menu.hidden = true; moGioHang(); break;
       case 'don-cua-toi': menu.hidden = true; moDonCuaToi(); break;
       case 'mo-quan-tri': location.href = 'quan-tri.html'; break;
@@ -1384,7 +1426,7 @@
   document.addEventListener('change', function (e) {
     var t = e.target;
     if (t.hasAttribute && t.hasAttribute('data-tem-gia')) { var it = S.gioTem[Number(t.getAttribute('data-tem-gia'))]; if (it) { it.gia = String(t.value).replace(/[^\d]/g, ''); luuTem(); moGioTem(); } }
-    else if (t.hasAttribute && t.hasAttribute('data-anh-cfg')) { var ka = t.getAttribute('data-anh-cfg'); cfgAnh()[ka] = t.type === 'checkbox' ? t.checked : t.value.trim(); LS.set('anhcfg', S.anhCfg); S.anhSan = null; if (t.type === 'checkbox') moGioAnh(); else { capNutAnh(); var d0 = S.byMa[S.gioAnh[0]]; if (d0) xemTruocAnh(d0); } }
+    else if (t.hasAttribute && t.hasAttribute('data-ga-cfg')) { var ka = t.getAttribute('data-ga-cfg'); cfgAnh()[ka] = t.type === 'checkbox' ? t.checked : t.value.trim(); LS.set('anhcfg', S.anhCfg); datLaiGA(); if (t.type === 'checkbox') moGioAnh(); }
     if (t.hasAttribute && t.hasAttribute('data-don')) { var fd = LS.get('don_nhap') || {}; fd[t.getAttribute('data-don')] = t.value; LS.set('don_nhap', fd); }
     else if (t.hasAttribute && t.hasAttribute('data-gio-o')) { var go = S.gio[Number(t.getAttribute('data-gio-o'))]; if (go) themGio(go.ma, Number(String(t.value).replace(',', '.'))); moGioHang(); }
     else if (t.hasAttribute && t.hasAttribute('data-tem-cfg')) { S.temCfg[t.getAttribute('data-tem-cfg')] = t.value.trim(); luuTem(); moGioTem(); }
@@ -1436,7 +1478,7 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden && !DEMO) kiemTraBanMoi(); });
   if (DEMO) {
     var sc = document.createElement('script');
-    sc.src = 'demo-data.js?v=14'; sc.onload = batDau;
+    sc.src = 'demo-data.js?v=15'; sc.onload = batDau;
     sc.onerror = function () { document.body.innerHTML = '<p style="padding:20px">Chưa cấu hình APPS_URL trong config.js.</p>'; };
     document.head.appendChild(sc);
   } else batDau();
