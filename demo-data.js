@@ -53,7 +53,7 @@
   function sao(o) { return JSON.parse(JSON.stringify(o)); }
   function tre(v) { return new Promise(function (ok) { setTimeout(function () { ok(v); }, 350); }); }
 
-  var TEN_QUYEN = { don: 'Duyệt đơn (xác nhận / từ chối / hủy)', giao: 'Kho & giao hàng (xuất kho, đang giao, đã giao)', chua: 'Duyệt chừa hàng / gia hạn / nhả hàng', coc: 'Ghi tiền cọc', ghichu: 'Ghi chú nội bộ', nhapgia: 'Nhập / sửa giá', sanpham: 'Thêm / sửa sản phẩm (mã mới, thông tin, ảnh)', nhapton: 'Nhập tồn kho (mở quyền sửa Sheet Tồn kho)', baocao: 'Xem báo cáo doanh số', nhatky: 'Xem nhật ký thao tác' };
+  var TEN_QUYEN = { don: 'Duyệt đơn (xác nhận / từ chối / hủy)', giao: 'Kho & giao hàng (xuất kho, đang giao, đã giao)', chua: 'Duyệt chừa hàng / gia hạn / nhả hàng', coc: 'Ghi tiền cọc', ghichu: 'Ghi chú nội bộ', baogia: 'Soạn báo giá (tạo, sửa, xóa, in)', nhapgia: 'Nhập / sửa giá', sanpham: 'Thêm / sửa sản phẩm (mã mới, thông tin, ảnh)', nhapton: 'Nhập tồn kho (mở quyền sửa Sheet Tồn kho)', baocao: 'Xem báo cáo doanh số', nhatky: 'Xem nhật ký thao tác' };
   var gmailNV = {};
   var TT_TEN = { moi: 'Mới – chờ duyệt', giu: 'Đang chừa hàng', xacnhan: 'Đã xác nhận', danggiao: 'Đang giao', dagiao: 'Đã giao', huy: 'Đã hủy', tuchoi: 'Từ chối' };
   var quyenNV = { nv: [] };
@@ -175,7 +175,7 @@
     }
     if (action === 'docSanPham' || action === 'luuSanPham') {
       if (!coQ(sess, 'sanpham')) return tre({ status: 'error', msg: 'forbidden' });
-      var sp = data.filter(function (x) { return x.ma.toUpperCase() === String(p.ma).toUpperCase(); })[0];
+      var sp = data.filter(function (x) { return x.ma.toUpperCase() === String(p.ma).toUpperCase(); })[0] || (action === 'luuSanPham' && p.an === false ? spAnDemo.filter(function (x) { return x.ma === p.ma; })[0] : null);
       if (action === 'docSanPham') return tre(sp ? { status: 'ok', data: Object.assign({ tenHien: '', an: false, anh: '', maKho: '' }, sao(sp), { ten: sp.ten }) } : { status: 'error', msg: 'Không thấy mã ' + p.ma });
       var f = p.f || {};
       if (p.moi) {
@@ -184,8 +184,28 @@
       } else if (!sp) return tre({ status: 'error', msg: 'Không thấy mã ' + p.ma });
       Object.keys(f).forEach(function (k) { sp[k] = k === 'ny' || k === 'dl' ? Number(f[k]) || 0 : f[k]; });
       if (f.tenHien) sp.ten = f.tenHien;
+      if (p.an === true || p.an === 'true') { data = data.filter(function (x) { return x.ma !== sp.ma; }); spAnDemo.unshift(Object.assign({}, sp, { an: true })); }
+      if ((p.an === false || p.an === 'false') && spAnDemo.some(function (x) { return x.ma === p.ma; })) { var h0 = spAnDemo.filter(function (x) { return x.ma === p.ma; })[0]; spAnDemo = spAnDemo.filter(function (x) { return x !== h0; }); delete h0.an; data.push(h0); }
       ghiNK(sess, p.moi ? 'Thêm sản phẩm' : 'Sửa sản phẩm', '', p.ma + ': ' + Object.keys(f).join(', '));
       return tre({ status: 'ok', msg: (p.moi ? 'Đã thêm mã ' : 'Đã lưu mã ') + p.ma + ' (thử)' });
+    }
+    if (action === 'dsSanPhamAn') return tre(coQ(sess, 'sanpham') ? { status: 'ok', data: sao(spAnDemo) } : { status: 'error', msg: 'forbidden' });
+    if (action === 'dsBaoGia') return tre(coQ(sess, 'baogia') ? { status: 'ok', data: sao(bgDemo) } : { status: 'error', msg: 'forbidden' });
+    if (action === 'luuBaoGia') {
+      if (!coQ(sess, 'baogia')) return tre({ status: 'error', msg: 'forbidden' });
+      if (!p.khach) return tre({ status: 'error', msg: 'Nhập tên khách hàng.' });
+      var its0 = (p.items || []).map(function (x) { return Object.assign({}, x, { tien: Math.round(x.sl * x.donGia) }); }), tam0 = its0.reduce(function (s, x) { return s + x.tien; }, 0);
+      var cu0 = bgDemo.filter(function (x) { return x.ma === p.ma; })[0], ma0 = cu0 ? cu0.ma : 'BG261116-' + ('00' + (++soBG)).slice(-3);
+      var bg0 = { ma: ma0, ngay: cu0 ? cu0.ngay : new Date().toISOString(), capNhat: new Date().toISOString(), nguoiTao: cu0 ? cu0.nguoiTao : sess.username, tt: p.tt || 'nhap', khach: p.khach, sdt: p.sdt || '', diaChi: p.diaChi || '',
+        loaiGia: p.loaiGia, tamTinh: tam0, ck: Number(p.ck) || 0, tong: Math.round(tam0 * (1 - (Number(p.ck) || 0) / 100)), hieuLuc: p.hieuLuc || '', ghiChu: p.ghiChu || '', items: its0 };
+      if (cu0) bgDemo[bgDemo.indexOf(cu0)] = bg0; else bgDemo.unshift(bg0);
+      ghiNK(sess, cu0 ? 'Sửa báo giá' : 'Tạo báo giá', ma0, p.khach);
+      return tre({ status: 'ok', ma: ma0, tong: bg0.tong, msg: (cu0 ? 'Đã lưu báo giá ' : 'Đã tạo báo giá ') + ma0 + ' (thử)' });
+    }
+    if (action === 'xoaBaoGia') {
+      if (!coQ(sess, 'baogia')) return tre({ status: 'error', msg: 'forbidden' });
+      bgDemo = bgDemo.filter(function (x) { return x.ma !== p.ma; }); ghiNK(sess, 'Xóa báo giá', p.ma, '');
+      return tre({ status: 'ok', msg: 'Đã xóa báo giá ' + p.ma + ' (thử)' });
     }
     if (action === 'maKhoThieuGia') {
       if (!coQ(sess, 'sanpham')) return tre({ status: 'error', msg: 'forbidden' });
@@ -233,6 +253,9 @@
   };
   var chuaCfg = [{ ngay: 3, coc: 0 }, { ngay: 5, coc: 0 }, { ngay: 7, coc: 10 }, { ngay: 10, coc: 10 }, { ngay: 15, coc: 20 }, { ngay: 30, coc: 30 }];
   var homQua = new Date(Date.now() - 86400000); homQua.setHours(23, 59, 0, 0);
+  var spAnDemo = [{ ma: 'DPHN.POLO', ten: 'Đồng phục Hiển Nga áo Polo', tenGoc: 'Đồng phục Hiển Nga áo Polo', nhom: 'Nội bộ', hang: '', kc: '', dvt: 'cái', ny: 0, dl: 0, an: true }];
+  var soBG = 1, bgDemo = [{ ma: 'BG261115-001', ngay: '2026-11-15T09:00:00+07:00', capNhat: '2026-11-15T09:20:00+07:00', nguoiTao: 'admin', tt: 'dagui', khach: 'Anh Tâm – nhà phố Bình Khánh', sdt: '0912345678', diaChi: 'Bình Khánh, Long Xuyên',
+    loaiGia: 'dl', tamTinh: 9400000, ck: 3, tong: 9118000, hieuLuc: '2026-11-22', ghiChu: 'Giá đã gồm VAT. Giao trong 3 ngày.', items: [{ ma: 'VS001', ten: 'Bồn cầu một khối mẫu 1', dvt: 'bộ', sl: 2, donGia: 3500000, tien: 7000000 }, { ma: 'VS004', ten: 'Lavabo đặt bàn mẫu 4', dvt: 'cái', sl: 1, donGia: 2400000, tien: 2400000 }] }];
   var donDemo = [
     { ma: 'HN261029-003', ngay: '2026-10-29T10:05:00+07:00', tt: 'giu', user: 'daily', ten: 'Cửa hàng VLXD Mẫu', sdt: '0909000111', hinhThuc: 'Nhận tại kho', diaChi: '', ngayCan: '',
       ghiChu: 'Giữ giúp cho công trình nhà anh Tâm', tong: 7000000, items: [{ ma: 'VS002', ten: 'Lavabo đặt bàn mẫu 2', sl: 2, dv: 'bộ', qd: '', dongia: 3500000, tien: 7000000 }],

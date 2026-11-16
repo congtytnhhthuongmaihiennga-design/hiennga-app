@@ -245,3 +245,16 @@ function themHangLoat(p, ti) {
   }
   return { status: 'ok', them: them.length, boQua: boQua, msg: 'Đã thêm ' + them.length + ' mã vào bảng giá' + (boQua ? ' (bỏ qua ' + boQua + ' mã đã có / mã sai)' : '') };
 }
+
+// Mã đang ẨN khỏi app (cột "Hiện trên app" = Không) – để trang quản trị hiện cùng danh sách và bật lại được.
+function dsSanPhamAn() {
+  var b = bangGiaTho(), ds = [];
+  if (b.c.hien === undefined) return { status: 'ok', data: [] };
+  for (var i = b.hi + 1; i < b.rows.length; i++) {
+    var r = b.rows[i], ma = chu(r[b.c.ma]);
+    if (!ma || ['khong', 'no', '0', 'an', 'false'].indexOf(norm(r[b.c.hien])) < 0) continue;
+    var o = function (k) { return b.c[k] === undefined ? '' : r[b.c[k]]; };
+    ds.push({ ma: ma, ten: chu(o('tenHien')) || chu(o('ten')), tenGoc: chu(o('ten')), nhom: chu(o('nhom')), hang: chu(o('hang')), kc: chu(o('kc')), dvt: chu(o('dvt')), ny: soTien(o('ny')), dl: soTien(o('dl')), an: true });
+  }
+  return { status: 'ok', data: ds };
+}

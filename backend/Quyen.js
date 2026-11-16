@@ -6,6 +6,7 @@
 var QUYEN = {
   don: 'Duyệt đơn (xác nhận / từ chối / hủy)',
   giao: 'Kho & giao hàng (xuất kho, đang giao, đã giao)',
+  baogia: 'Soạn báo giá (tạo, sửa, xóa, in)',
   chua: 'Duyệt chừa hàng / gia hạn / nhả hàng',
   coc: 'Ghi tiền cọc',
   ghichu: 'Ghi chú nội bộ',

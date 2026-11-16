@@ -57,8 +57,13 @@ function xuLy(p) {
       case 'suaGia':     return coQuyen(ti, 'nhapgia') ? suaGia(p, ti) : cam;
       case 'docSanPham': return coQuyen(ti, 'sanpham') ? docSanPham(p) : cam;
       case 'luuSanPham': return coQuyen(ti, 'sanpham') ? luuSanPham(p, ti) : cam;
+      case 'dsSanPhamAn': return coQuyen(ti, 'sanpham') ? dsSanPhamAn() : cam;
       case 'maKhoThieuGia': return coQuyen(ti, 'sanpham') ? maKhoThieuGia() : cam;
       case 'themHangLoat': return coQuyen(ti, 'sanpham') ? themHangLoat(p, ti) : cam;
+      // Báo giá (nháp)
+      case 'dsBaoGia':   return coQuyen(ti, 'baogia') ? dsBaoGia() : cam;
+      case 'luuBaoGia':  return coQuyen(ti, 'baogia') ? luuBaoGia(p, ti) : cam;
+      case 'xoaBaoGia':  return coQuyen(ti, 'baogia') ? xoaBaoGia(p, ti) : cam;
       case 'thongTinTon': return coQuyen(ti, 'nhapton') ? thongTinTon() : cam;
       case 'lamMoiTon':  return coQuyen(ti, 'nhapton') ? lamMoiTon(ti) : cam;
     }
