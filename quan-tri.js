@@ -154,16 +154,26 @@
     var q = S.q.trim().toLowerCase();
     return S.don.filter(function (d) {
       if (S.loc && d.tt !== S.loc) return false;
+      if (S.nguoiChua && !(d.loai === 'chua' && (d.nguoiTao || d.user) === S.nguoiChua && CHUA_DANG[d.tt])) return false;
       if (!q) return true;
       return [d.ma, d.ten, d.sdt, d.user, d.diaChi, d.chuaCho, d.nguoiTao].concat(d.items.map(function (x) { return x.ma; })).join(' ').toLowerCase().indexOf(q) >= 0;
     });
+  }
+  var CHUA_DANG = { moi: 1, giu: 1, xacnhan: 1, danggiao: 1 };
+  // Đơn chừa còn hiệu lực theo nhân viên/tài khoản đã chừa -> quản trị biết ai đang chừa bao nhiêu.
+  function chipNguoiChua() {
+    var dem = {}; S.don.forEach(function (d) { if (d.loai === 'chua' && CHUA_DANG[d.tt]) { var k = d.nguoiTao || d.user; dem[k] = (dem[k] || 0) + 1; } });
+    var ten = Object.keys(dem).sort(function (a, b) { return dem[b] - dem[a]; });
+    if (!ten.length) return '';
+    return '<div class="qt-loc qt-nguoi-chua"><span class="mo">🔒 Đang chừa hàng theo người chừa:</span>' + ten.map(function (k) { return '<button type="button" class="chip' + (S.nguoiChua === k ? ' on' : '') + '" data-qt-nc-loc="' + esc(k) + '">' + esc(k) + ' <small>' + dem[k] + '</small></button>'; }).join('') +
+      (S.nguoiChua ? '<button type="button" class="chip" data-qt-nc-loc="">✕ Bỏ lọc</button>' : '') + '</div>';
   }
   function veDon() {
     var ds = locDon();
     return '<div class="qt-h1">Đơn hàng <small>' + S.don.length + ' đơn gần nhất</small>' + NUT_LM + (laAdmin() && S.don.length ? '<button type="button" class="btn btn-vien btn-nho nut-xoa-het" data-qt-act="xoa-het-don">🗑 Xóa toàn bộ đơn</button>' : '') + '</div>' +
       '<div class="qt-loc"><button type="button" class="chip' + (S.loc ? '' : ' on') + '" data-qt-loc="">Tất cả</button>' +
       THU_TU.map(function (t) { return '<button type="button" class="chip' + (S.loc === t ? ' on' : '') + '" data-qt-loc="' + t + '">' + TEN_TT[t] + ' <small>' + (S.dem[t] || 0) + '</small></button>'; }).join('') +
-      '<input id="qt-q" type="search" placeholder="Tìm mã đơn, đại lý, SĐT, mã hàng…"></div>' +
+      '<input id="qt-q" type="search" placeholder="Tìm mã đơn, đại lý, SĐT, mã hàng, người chừa…"></div>' + chipNguoiChua() +
       '<div class="qt-khung">' + bangDon(ds, 'Không có đơn phù hợp') + '</div>';
   }
   function bangDon(ds, trong) {
@@ -1066,7 +1076,7 @@
   function vePhieuNhapDs() {
     if (!S.pn.ds && !S.pn.loi) taiPhieuNhap();
     var ds = S.pn.ds || [], hien = S.pn.het ? ds : ds.slice(0, 8);
-    return '<div class="qt-khung qt-pn"><div class="qt-pn-dau"><div><h2>📥 Phiếu nhập kho</h2><p class="mo">Hàng mới về: lập phiếu ghi mã, số lượng, ngày nhập. App biết lô nào nhập ngày nào để tính tuổi tồn (nhập trước bán trước).</p></div>' +
+    return '<div class="qt-khung qt-pn"><div class="qt-pn-dau"><div><h2>📥 Phiếu nhập kho</h2><p class="mo">Hàng mới về: lập phiếu ghi mã, số lượng, ngày nhập. App biết lô nào nhập ngày nào để tính tuổi tồn (nhập trước bán trước). Lưu ở Sheet chính – dán lại Sheet Tồn kho không mất.</p></div>' +
       '<button type="button" class="btn btn-chinh" data-qt-act="pn-moi">+ Lập phiếu nhập</button></div>' +
       (S.pn.loi ? '<p class="qt-thieu" style="padding:0 16px 14px">Không tải được phiếu nhập: ' + esc(S.pn.loi) + '</p>' :
         !S.pn.ds ? '<div class="qt-trong">Đang tải…</div>' :
@@ -1195,7 +1205,7 @@
     }).catch(function () { tat(); toast('Không mở được camera – cho phép quyền camera rồi thử lại'); });
   }
 
-  // Bảng tuổi tồn: ngày nhập theo phiếu nhập / ghi tay / cột "Ngày nhập" của Sheet Tồn kho.
+  // Bảng tuổi tồn: ngày nhập theo phiếu nhập / ghi tay (lưu ở Sheet chính, không mất khi dán lại Sheet Tồn kho).
   var MUC_TUOI = [['', 'Tất cả'], ['rlau', '> 180 ngày'], ['lau', '91 – 180 ngày'], ['tb', '31 – 90 ngày'], ['moi', '≤ 30 ngày'], ['chua', 'Chưa có ngày nhập']];
   var NGUON_NHAP = { phieu: 'theo phiếu nhập', tay: 'ghi tay', sheet: 'theo Sheet' };
   function veTuoiTon() {
@@ -1224,7 +1234,7 @@
           '<td class="so">' + (x.t ? '<b class="tuoi tuoi-' + x.t.muc + '">' + x.t.n + '</b>' : '—') + '</td><td class="an-dt">' + (x.t ? '<span class="tuoi tuoi-' + x.t.muc + '">' + x.t.ten + '</span>' : '') + '</td></tr>'; }).join('') +
       (hien.length ? '' : '<tr><td colspan="5" class="qt-trong">Không có mã nào</td></tr>') + '</tbody></table></div>' +
       (hien.length > 300 ? '<p class="mo" style="padding:8px 16px">Đang hiện 300 / ' + hien.length + ' mã – lọc / tìm để xem mã khác, hoặc tải sổ Excel.</p>' : '') +
-      '<div class="qt-hd-tuoi">' + chuThichTuoi() + '<p class="mo" style="margin-top:8px">Ngày nhập lấy theo thứ tự: phiếu nhập → ngày ghi tay (✎) → cột "Ngày nhập" của Sheet Tồn kho (nếu có).</p></div></div>';
+      '<div class="qt-hd-tuoi">' + chuThichTuoi() + '<p class="mo" style="margin-top:8px">Ngày nhập lấy theo phiếu nhập, phần hàng cũ lấy theo ngày ghi tay (✎). Lưu ở Sheet chính (tab "Nhập kho", "Ngày nhập ghi tay") – dán lại Sheet Tồn kho không mất.</p></div></div>';
   }
   function ghiNgayTay(ma, ngay, nut) {
     nut.disabled = true;
@@ -1248,10 +1258,10 @@
 
   // ---------- Bấm ----------
   document.addEventListener('click', function (e) {
-    var el = e.target.closest('[data-qt],[data-qt-loc],[data-don],[data-qt-tt],[data-qt-gh],[data-qt-act],[data-bc-ky],[data-nv-luu],[data-gia-luu],[data-sp-sua],[data-tem-them],[data-tem-kho],[data-tem-sl],[data-tem-loc],[data-tk],[data-tk-vt],[data-th-chon],[data-sp-an],[data-sp-tt],[data-bg],[data-bg-tt],[data-bg-gia],[data-bg-them],[data-bg-xoa-dong],[data-bg-loc],[data-tuoi-loc],[data-pn],[data-pn-them],[data-pn-bo],[data-tuoi-sua],[data-tuoi-luu],[data-tuoi-huy]');
+    var el = e.target.closest('[data-qt],[data-qt-loc],[data-don],[data-qt-tt],[data-qt-gh],[data-qt-act],[data-bc-ky],[data-nv-luu],[data-gia-luu],[data-sp-sua],[data-tem-them],[data-tem-kho],[data-tem-sl],[data-tem-loc],[data-tk],[data-tk-vt],[data-th-chon],[data-sp-an],[data-sp-tt],[data-bg],[data-bg-tt],[data-bg-gia],[data-bg-them],[data-bg-xoa-dong],[data-bg-loc],[data-tuoi-loc],[data-qt-nc-loc],[data-pn],[data-pn-them],[data-pn-bo],[data-tuoi-sua],[data-tuoi-luu],[data-tuoi-huy]');
     if (!el) { if (e.target.id === 'qt-nen') dongDon(); return; }
     if (el.hasAttribute('data-qt')) { if (S.trang === 'baogia' && S.bg.doi && el.getAttribute('data-qt') !== 'baogia' && !confirm('Báo giá chưa lưu – rời đi?')) return; S.trang = el.getAttribute('data-qt'); ve(); return; }
-    if (el.hasAttribute('data-qt-loc')) { S.loc = el.getAttribute('data-qt-loc'); S.trang = 'don'; ve(); return; }
+    if (el.hasAttribute('data-qt-loc')) { S.loc = el.getAttribute('data-qt-loc'); S.nguoiChua = ''; S.trang = 'don'; ve(); return; }
     if (el.hasAttribute('data-don')) { moDon(el.getAttribute('data-don')); return; }
     if (el.hasAttribute('data-qt-tt')) { doiTT(el.getAttribute('data-qt-tt')); return; }
     if (el.hasAttribute('data-qt-gh')) { var n = el.getAttribute('data-qt-gh'); if (confirm('Gia hạn chừa hàng thêm ' + n + ' ngày?')) guiCapNhat({ giaHan: n }); return; }
@@ -1277,6 +1287,7 @@
     if (el.hasAttribute('data-bg-them')) { themDongBG(el.getAttribute('data-bg-them')); return; }
     if (el.hasAttribute('data-bg-xoa-dong')) { S.bg.dang.items.splice(Number(el.getAttribute('data-bg-xoa-dong')), 1); S.bg.doi = true; ve(); return; }
     if (el.hasAttribute('data-th-chon')) { var mc = el.getAttribute('data-th-chon'); if (S.th.chon[mc]) delete S.th.chon[mc]; else S.th.chon[mc] = 1; ve(); return; }
+    if (el.hasAttribute('data-qt-nc-loc')) { S.nguoiChua = el.getAttribute('data-qt-nc-loc'); if (S.nguoiChua) S.loc = ''; ve(); return; }
     if (el.hasAttribute('data-pn')) { moPhieuNhap(el.getAttribute('data-pn')); return; }
     if (el.hasAttribute('data-pn-them')) { themPn(el.getAttribute('data-pn-them')); return; }
     if (el.hasAttribute('data-pn-bo')) { S.pn.dang.items.splice(Number(el.getAttribute('data-pn-bo')), 1); S.pn.doi = true; vePnDs(); return; }

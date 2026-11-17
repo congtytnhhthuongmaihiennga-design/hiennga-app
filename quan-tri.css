@@ -275,3 +275,5 @@ details.qt-ton-hd summary{padding:14px 16px;cursor:pointer}
 .qt-quet video{width:min(420px,100%);border-radius:14px;background:#000}
 .qt-quet .btn{width:auto}
 @media (max-width:640px){.qt-pn-dau{flex-direction:column}.qt-tuoi-o .btn{padding:5px 10px}.qt-pn-dau .btn{width:100%}.qt-pn-form{grid-template-columns:1fr}}
+.qt-nguoi-chua{margin-top:-4px}
+.qt-nguoi-chua .mo{font-size:13px;margin-right:2px}
