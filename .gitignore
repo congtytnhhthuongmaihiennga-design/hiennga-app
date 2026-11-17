@@ -16,3 +16,7 @@ backend/Rieng.js
 # File thu / tai lieu gui rieng
 huong-dan/*.pdf
 huong-dan/QR thu*.png
+huong-dan/nguon-video-*/khung*/
+huong-dan/nguon-video-*/loi*/
+huong-dan/nguon-video-*/doan*/
+huong-dan/nguon-video-*/loi*.json
