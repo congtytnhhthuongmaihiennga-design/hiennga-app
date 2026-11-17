@@ -43,7 +43,7 @@
       d.kho.push({ ten: k[0], nhom: k[1], tong: sl, lo: lo }); d.tong += sl; d.tier[k[1]] += sl;
     });
     var nhap = new Date(Date.now() - (3 + rnd(320)) * 86400000), iso = function (x) { return x.getFullYear() + '-' + ('0' + (x.getMonth() + 1)).slice(-2) + '-' + ('0' + x.getDate()).slice(-2); };
-    if (rnd(4) === 0) { /* chưa có ngày nhập */ } else { d.nhap = iso(nhap); d.nhapMoi = iso(new Date(nhap.getTime() + rnd(40) * 86400000)); }
+    if (rnd(4) === 0) { /* chưa có ngày nhập */ } else { d.nhap = iso(nhap); d.nhapMoi = iso(new Date(Math.min(Date.now() - 86400000, nhap.getTime() + rnd(40) * 86400000))); }
     if (d.nhap) d.kho.forEach(function (k) { k.lo[0].ngay = d.nhap; if (k.lo[1]) k.lo[1].ngay = d.nhapMoi; });
     if (d.tong) ton[p.ma] = d;
   });
