@@ -12,7 +12,7 @@ const go = (sel, v) => `var o = document.querySelector(${JSON.stringify(sel)}); 
 
 (async () => {
   const ch = await moChrome();
-  const chup = async (p, ten, ngan) => { await cho(500); await p.chup(path.join(OUT, ten + '.png'), ngan ? { x: 1280 - 620, width: 620 } : null); console.log('chụp', ten); };
+  const chup = async (p, ten, ngan) => { await cho(500); await p.chay('var t = document.getElementById("toast"); if (t) t.style.visibility = "hidden";'); await p.chup(path.join(OUT, ten + '.png'), ngan ? { x: 1280 - 620, width: 620 } : null); console.log('chụp', ten); };
 
   // ===== Trang quản trị (máy tính) =====
   let p = await ch.trang();

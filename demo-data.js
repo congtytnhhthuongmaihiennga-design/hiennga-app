@@ -6,7 +6,7 @@
 (function () {
   var HANG = ['Hãng Mẫu A', 'Hãng Mẫu B', 'Hãng Mẫu C'];
   var KHO = [['Kho Trung tâm', 'nhanh'], ['Kho Chi nhánh', 'mai'], ['Kho Hãng', 'cho']];
-  var data = [], ton = {}, seed = 7;
+  var data = [], ton = {}, seed = 7, NGAY_TAY0 = {};
   function rnd(n) { seed = (seed * 9301 + 49297) % 233280; return Math.floor(seed / 233280 * n); }
   function chon(a) { return a[rnd(a.length)]; }
 
@@ -43,8 +43,7 @@
       d.kho.push({ ten: k[0], nhom: k[1], tong: sl, lo: lo }); d.tong += sl; d.tier[k[1]] += sl;
     });
     var nhap = new Date(Date.now() - (3 + rnd(320)) * 86400000), iso = function (x) { return x.getFullYear() + '-' + ('0' + (x.getMonth() + 1)).slice(-2) + '-' + ('0' + x.getDate()).slice(-2); };
-    if (rnd(4) === 0) { /* chưa có ngày nhập */ } else { d.nhap = iso(nhap); d.nhapMoi = iso(new Date(Math.min(Date.now() - 86400000, nhap.getTime() + rnd(40) * 86400000))); }
-    if (d.nhap) d.kho.forEach(function (k) { k.lo[0].ngay = d.nhap; if (k.lo[1]) k.lo[1].ngay = d.nhapMoi; });
+    if (rnd(4) !== 0) NGAY_TAY0[p.ma] = iso(nhap); // ngày ghi tay (Sheet chính), ~1/4 mã chưa có ngày
     if (d.tong) ton[p.ma] = d;
   });
 
@@ -277,7 +276,7 @@
     return tre({ status: 'ok' });
   };
   // Ngày nhập: phiếu nhập (nhập trước bán trước) -> ghi tay -> cột Sheet (giống máy chủ)
-  var phieuDemo = [], ngayTayDemo = {};
+  var phieuDemo = [], ngayTayDemo = NGAY_TAY0;
   function apNgayDemo(d, ma) {
     var ton0 = d.tonGoc !== undefined ? d.tonGoc : d.tong, ds = [];
     phieuDemo.forEach(function (p) { p.items.forEach(function (x) { if (x.ma === ma) ds.push({ ngay: p.ngay, sl: x.sl, so: p.ma }); }); });
