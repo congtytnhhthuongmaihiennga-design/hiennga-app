@@ -126,12 +126,12 @@ function taoDon(p, ti) {
       tong: tong, items: dong, loai: chua ? 'chua' : '', soNgay: chua ? soNgay : 0, coc: chua ? tienCoc(tong, soNgay) : 0, chuaCho: chuaCho, nguoiTao: u.ten || ti.user, user: ti.user
     };
     themDongTheoTen(tabDon(TAB_DON, TD_DON), {
-      'Mã đơn': ma, 'Ngày đặt': luc, 'Trạng thái': TRANG_THAI.moi, 'Tài khoản': ti.user, 'Đại lý / cửa hàng': don.ten, 'SĐT': "'" + don.sdt,
+      'Mã đơn': ma, 'Ngày đặt': luc, 'Trạng thái': TRANG_THAI.moi, 'Tài khoản': "'" + ti.user, 'Đại lý / cửa hàng': don.ten, 'SĐT': "'" + don.sdt,
       'Hình thức': don.hinhThuc, 'Địa chỉ giao': don.diaChi, 'Ngày cần hàng': don.ngayCan, 'Ghi chú khách': don.ghiChu, 'Số mặt hàng': dong.length,
       'Tổng tiền': tong, 'Cập nhật lúc': luc, 'Chi tiết (máy)': JSON.stringify(dong),
       'Loại': chua ? LOAI_CHUA : 'Đặt hàng', 'Số ngày chừa': chua ? soNgay : '', 'Cọc yêu cầu': chua ? don.coc : '', 'Chừa cho khách': chuaCho, 'Người tạo đơn': don.nguoiTao
     });
-    var ct = tabDon(TAB_CT, TD_CT), rows = dong.map(function (d) { return [ma, luc, ti.user, d.ma, d.ten, d.sl, d.dv, d.qd, d.dongia, d.tien]; });
+    var ct = tabDon(TAB_CT, TD_CT), rows = dong.map(function (d) { return [ma, luc, "'" + ti.user, d.ma, d.ten, d.sl, d.dv, d.qd, d.dongia, d.tien]; });
     ct.getRange(ct.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
   } finally { lock.releaseLock(); }
   demXoa('giu');
@@ -154,6 +154,17 @@ function thongTinUser(user) {
 }
 
 // Đọc đơn. loc: {user, tt, noiBo}. Mới nhất trước.
+// Ô "Tài khoản" trong Sheet: tài khoản là số ĐT (0939…) có thể đã bị Sheet đổi thành số 939… -> trả về đúng tên đăng nhập.
+function taoTkGoc() {
+  var nho = {}, so = null;
+  return function (v) {
+    var s = chu(v).replace(/^'/, '').toLowerCase();
+    if (!/^\d+$/.test(s)) return s;
+    if (nho[s] !== undefined) return nho[s];
+    if (!so) { so = {}; try { Object.keys(dsTaiKhoan()).forEach(function (k) { if (/^\d+$/.test(k)) so[k.replace(/^0+/, '')] = k; }); } catch (e) { } }
+    return (nho[s] = so[s.replace(/^0+/, '')] || s);
+  };
+}
 function docDon(loc, gioiHan) {
   var sh = layTab(TAB_DON, false);
   if (!sh || sh.getLastRow() < 2) return [];
@@ -165,7 +176,7 @@ function docDon(loc, gioiHan) {
   });
   var maTT = {}; Object.keys(TRANG_THAI).forEach(function (k) { maTT[TRANG_THAI[k]] = k; });
   var iso = function (v) { return v instanceof Date ? v.toISOString() : chu(v); };
-  var ds = [], tenTK = null;
+  var ds = [], tenTK = null, tkGoc = taoTkGoc();
   var tenCua = function (u) { // đơn cũ chưa ghi "Người tạo đơn" -> lấy Họ tên trong tab Users
     if (!tenTK) { tenTK = {}; try { var t = tabUsers(); t.rows.slice(1).forEach(function (r) { if (t.c.user !== undefined && t.c.ten !== undefined) tenTK[chu(r[t.c.user]).toLowerCase()] = chu(r[t.c.ten]); }); } catch (e) { } }
     return tenTK[String(u).toLowerCase()] || u;
@@ -174,16 +185,17 @@ function docDon(loc, gioiHan) {
     var r = rows[i], o = function (k) { return c[k] === undefined ? '' : r[c[k]]; };
     if (!chu(o('ma'))) continue;
     var tt = maTT[chu(o('tt'))] || 'moi';
-    if (loc.user && chu(o('user')).toLowerCase() !== loc.user) continue;
+    var tkD = tkGoc(o('user'));
+    if (loc.user && tkD !== loc.user) continue;
     if (loc.tt && loc.tt !== tt) continue;
     if (loc.cacTT && loc.cacTT.indexOf(tt) < 0) continue;
     var items = []; try { items = JSON.parse(o('ct') || '[]'); } catch (e) { }
-    ds.push({ ma: chu(o('ma')), ngay: iso(o('ngay')), tt: tt, user: chu(o('user')), ten: chu(o('ten')), sdt: chu(o('sdt')),
+    ds.push({ ma: chu(o('ma')), ngay: iso(o('ngay')), tt: tt, user: tkD, ten: chu(o('ten')), sdt: chu(o('sdt')),
       hinhThuc: chu(o('ht')), diaChi: chu(o('dc')), ngayCan: o('can') instanceof Date ? Utilities.formatDate(o('can'), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd') : chu(o('can')),
-      ghiChu: chu(o('gc')), tong: Number(o('tong')) || 0, xuLy: chu(o('xl')), capNhat: iso(o('cn')),
+      ghiChu: chu(o('gc')), tong: Number(o('tong')) || 0, xuLy: tkGoc(o('xl')), capNhat: iso(o('cn')),
       ghiChuNB: loc.noiBo ? chu(o('nb')) : '', items: items,
       loai: chu(o('loai')) === LOAI_CHUA ? 'chua' : '', soNgay: Number(o('sn')) || 0, han: iso(o('han')),
-      coc: Number(o('coc')) || 0, daCoc: Number(o('dacoc')) || 0, xinGH: Number(o('xin')) || 0, nguoiGiao: chu(o('ng')), ngayGiao: iso(o('ngg')), chuaCho: chu(o('nc')), nguoiTao: chu(o('nt')) || tenCua(chu(o('user'))), _dong: i + 1 });
+      coc: Number(o('coc')) || 0, daCoc: Number(o('dacoc')) || 0, xinGH: Number(o('xin')) || 0, nguoiGiao: chu(o('ng')), ngayGiao: iso(o('ngg')), chuaCho: chu(o('nc')), nguoiTao: chu(o('nt')) || tenCua(tkD), _dong: i + 1 });
   }
   return ds;
 }
@@ -275,7 +287,7 @@ function capNhatDon(p, ti) {
     if (doiNC) { ghi('Chừa cho khách', chu(p.chuaCho).slice(0, 80)); nk.push('chừa cho khách: ' + (d.chuaCho || '(trống)') + ' → ' + chu(p.chuaCho).slice(0, 80)); }
     if (doiNB) { ghi('Ghi chú nội bộ', chu(p.ghiChuNB).slice(0, 500)); nk.push('ghi chú nội bộ: ' + chu(p.ghiChuNB).slice(0, 200)); }
     if (!nk.length) return { status: 'ok', msg: 'Không có gì thay đổi' };
-    ghi('Người xử lý', ti.user); ghi('Cập nhật lúc', new Date());
+    ghi('Người xử lý', "'" + ti.user); ghi('Cập nhật lúc', new Date());
   } finally { lock.releaseLock(); }
   demXoa('giu');
   ghiNhatKy(ti, noiBo ? 'Cập nhật đơn' : 'Đại lý tự hủy đơn', d.ma, nk.join(' · '));

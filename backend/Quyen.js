@@ -90,7 +90,7 @@ function ghiNhatKy(ti, hanhDong, maDon, chiTiet) {
       sh.getRange(1, 1, 1, TD_NHAT_KY.length).setValues([TD_NHAT_KY]).setFontWeight('bold').setBackground('#E3F2FD');
       sh.setFrozenRows(1); sh.setColumnWidth(6, 480);
     }
-    sh.appendRow([new Date(), ti ? ti.user : '', ti ? ti.role : '', hanhDong, maDon || '', String(chiTiet || '').slice(0, 1000)]);
+    sh.appendRow([new Date(), ti ? "'" + ti.user : '', ti ? ti.role : '', hanhDong, maDon || '', String(chiTiet || '').slice(0, 1000)]);
   } catch (e) { Logger.log('Nhật ký lỗi: ' + e); }
 }
 // p.maDon: lịch sử 1 đơn (ai vào trang quản trị cũng xem được); còn lại cần quyền "nhatky".

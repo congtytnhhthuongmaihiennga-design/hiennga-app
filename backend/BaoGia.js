@@ -61,7 +61,7 @@ function luuBaoGia(p, ti) {
     var luc = new Date(), b = docBaoGia(), cu = chu(p.ma) ? b.ds.filter(function (x) { return x.ma === chu(p.ma); })[0] : null;
     if (chu(p.ma) && !cu) return { status: 'error', msg: 'Không thấy báo giá ' + p.ma + ' (có thể đã bị xóa).' };
     moi = !cu; ma = cu ? cu.ma : maBaoGiaMoi();
-    var gt = { 'Mã báo giá': ma, 'Ngày tạo': cu ? new Date(cu.ngay) : luc, 'Cập nhật': luc, 'Người tạo': cu ? cu.nguoiTao : ti.user, 'Trạng thái': TT_BG[tt],
+    var gt = { 'Mã báo giá': ma, 'Ngày tạo': cu ? new Date(cu.ngay) : luc, 'Cập nhật': luc, 'Người tạo': "'" + (cu ? cu.nguoiTao : ti.user), 'Trạng thái': TT_BG[tt],
       'Khách hàng': chu(p.khach).slice(0, 200), 'SĐT': "'" + chu(p.sdt).slice(0, 30), 'Địa chỉ': chu(p.diaChi).slice(0, 300), 'Loại giá': p.loaiGia === 'ny' ? 'Giá niêm yết' : 'Giá đại lý',
       'Số mặt hàng': items.length, 'Tạm tính': tamTinh, 'Chiết khấu %': ck, 'Tổng tiền': tong, 'Hiệu lực đến': chu(p.hieuLuc), 'Ghi chú': chu(p.ghiChu).slice(0, 1000), 'Chi tiết (máy)': JSON.stringify(items) };
     var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(chu);
