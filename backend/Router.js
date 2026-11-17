@@ -67,6 +67,11 @@ function xuLy(p) {
       case 'xoaBaoGia':  return coQuyen(ti, 'baogia') ? xoaBaoGia(p, ti) : cam;
       case 'thongTinTon': return coQuyen(ti, 'nhapton') ? thongTinTon() : cam;
       case 'lamMoiTon':  return coQuyen(ti, 'nhapton') ? lamMoiTon(ti) : cam;
+      // Nhập kho (phiếu nhập trên trang quản trị)
+      case 'dsPhieuNhap':  return coQuyen(ti, 'nhapton') ? dsPhieuNhap() : cam;
+      case 'luuPhieuNhap': return coQuyen(ti, 'nhapton') ? luuPhieuNhap(p, ti) : cam;
+      case 'xoaPhieuNhap': return coQuyen(ti, 'nhapton') ? xoaPhieuNhap(p, ti) : cam;
+      case 'ghiNgayNhap':  return coQuyen(ti, 'nhapton') ? ghiNgayNhap(p, ti) : cam;
     }
     return { status: 'error', msg: 'Unknown action: ' + a };
   } catch (err) {

@@ -43,8 +43,8 @@
       d.kho.push({ ten: k[0], nhom: k[1], tong: sl, lo: lo }); d.tong += sl; d.tier[k[1]] += sl;
     });
     var nhap = new Date(Date.now() - (3 + rnd(320)) * 86400000), iso = function (x) { return x.getFullYear() + '-' + ('0' + (x.getMonth() + 1)).slice(-2) + '-' + ('0' + x.getDate()).slice(-2); };
-    d.nhap = iso(nhap); d.nhapMoi = iso(new Date(nhap.getTime() + rnd(40) * 86400000));
-    d.kho.forEach(function (k) { k.lo[0].ngay = d.nhap; if (k.lo[1]) k.lo[1].ngay = d.nhapMoi; });
+    if (rnd(4) === 0) { /* chưa có ngày nhập */ } else { d.nhap = iso(nhap); d.nhapMoi = iso(new Date(nhap.getTime() + rnd(40) * 86400000)); }
+    if (d.nhap) d.kho.forEach(function (k) { k.lo[0].ngay = d.nhap; if (k.lo[1]) k.lo[1].ngay = d.nhapMoi; });
     if (d.tong) ton[p.ma] = d;
   });
 
@@ -92,8 +92,24 @@
         var d = t[m], c = function (n) { return Math.min(n, 51); };
         t[m] = { tong: c(d.tong), dvt: d.dvt, tier: { nhanh: c(d.tier.nhanh), mai: c(d.tier.mai), cho: c(d.tier.cho) } };
       });
+      if (sess.role !== 'khachhang') Object.keys(t).forEach(function (m) { apNgayDemo(t[m], m); });
       return tre({ status: 'ok', data: t, luc: new Date().toISOString() });
     }
+    // Phiếu nhập kho (giả, trong bộ nhớ)
+    if (action === 'dsPhieuNhap') return tre(coQ(sess, 'nhapton') ? { status: 'ok', data: sao(phieuDemo).sort(function (a, b) { return a.ngay < b.ngay ? 1 : -1; }), ngayTay: sao(ngayTayDemo) } : { status: 'error', msg: 'forbidden' });
+    if (action === 'luuPhieuNhap') {
+      if (!coQ(sess, 'nhapton')) return tre({ status: 'error', msg: 'forbidden' });
+      if (!p.ngay) return tre({ status: 'error', msg: 'Chọn ngày nhập.' });
+      var gop = {}; (p.items || []).forEach(function (x) { if (Number(x.sl) > 0) gop[x.ma] = (gop[x.ma] || 0) + Number(x.sl); });
+      if (!Object.keys(gop).length) return tre({ status: 'error', msg: 'Phiếu chưa có mặt hàng nào (số lượng > 0).' });
+      var hangPN = function (ma) { var g = data.filter(function (x) { return x.ma === ma; })[0], d = ton[ma]; return { ten: g ? g.ten : '', dv: d ? d.dvt : g && g.dvt === 'm²' ? 'thùng' : g ? g.dvt : '' }; };
+      var soPN = p.ma || 'NK261117-' + ('00' + (phieuDemo.length + 1)).slice(-3), pn = { ma: soPN, ngay: p.ngay, kho: p.kho || '', ncc: p.ncc || '', ghiChu: p.ghiChu || '', nguoi: sess.username, luc: new Date().toISOString(),
+        items: Object.keys(gop).map(function (ma) { var h = hangPN(ma); return { ma: ma, ten: h.ten, sl: gop[ma], dv: h.dv }; }) };
+      phieuDemo = phieuDemo.filter(function (x) { return x.ma !== soPN; }); phieuDemo.push(pn); ghiNK(sess, p.ma ? 'Sửa phiếu nhập kho' : 'Lập phiếu nhập kho', soPN, pn.items.length + ' mã');
+      return tre({ status: 'ok', ma: soPN, msg: (p.ma ? 'Đã lưu phiếu ' : 'Đã lập phiếu ') + soPN });
+    }
+    if (action === 'xoaPhieuNhap') { if (!coQ(sess, 'nhapton')) return tre({ status: 'error', msg: 'forbidden' }); phieuDemo = phieuDemo.filter(function (x) { return x.ma !== p.ma; }); return tre({ status: 'ok', msg: 'Đã xóa phiếu ' + p.ma }); }
+    if (action === 'ghiNgayNhap') { if (!coQ(sess, 'nhapton')) return tre({ status: 'error', msg: 'forbidden' }); if (p.ngay) ngayTayDemo[p.ma] = p.ngay; else delete ngayTayDemo[p.ma]; return tre({ status: 'ok', msg: p.ngay ? 'Đã ghi ngày nhập ' + p.ma : 'Đã xóa ngày ghi tay ' + p.ma }); }
     if (action === 'login') {
       var u = String(p.username || '').toLowerCase();
       var role = u.indexOf('admin') === 0 ? 'admin' : (u.indexOf('nv') === 0 ? 'nv' : 'khachhang');
@@ -260,6 +276,21 @@
     }
     return tre({ status: 'ok' });
   };
+  // Ngày nhập: phiếu nhập (nhập trước bán trước) -> ghi tay -> cột Sheet (giống máy chủ)
+  var phieuDemo = [], ngayTayDemo = {};
+  function apNgayDemo(d, ma) {
+    var ton0 = d.tonGoc !== undefined ? d.tonGoc : d.tong, ds = [];
+    phieuDemo.forEach(function (p) { p.items.forEach(function (x) { if (x.ma === ma) ds.push({ ngay: p.ngay, sl: x.sl, so: p.ma }); }); });
+    ds.sort(function (a, b) { return a.ngay < b.ngay ? 1 : -1; });
+    var tay = ngayTayDemo[ma];
+    if (!ds.length) { if (tay) { d.nhap = tay; d.nguonNhap = 'tay'; } else if (d.nhap) d.nguonNhap = 'sheet'; return; }
+    var con = [], cong = 0;
+    for (var i = 0; i < ds.length && cong < ton0; i++) { var sl = Math.min(ds[i].sl, ton0 - cong); cong += sl; con.push({ ngay: ds[i].ngay, sl: Math.round(sl * 1000) / 1000, so: ds[i].so }); }
+    d.nhapMoi = ds[0].ngay;
+    if (cong >= ton0 - 1e-9) { d.nhap = con[con.length - 1].ngay; d.nguonNhap = 'phieu'; }
+    else { var nguon = tay ? 'tay' : d.nhap ? 'sheet' : 'phieu', cu = tay || d.nhap || con[con.length - 1].ngay; con.push({ ngay: cu, sl: Math.round((ton0 - cong) * 1000) / 1000, so: '', cu: 1 }); d.nhap = cu; d.nguonNhap = nguon; d.thieuPhieu = Math.round((ton0 - cong) * 1000) / 1000; }
+    d.loNhap = con.slice(0, 8);
+  }
   var chuaCfg = [{ ngay: 3, coc: 0 }, { ngay: 5, coc: 0 }, { ngay: 7, coc: 10 }, { ngay: 10, coc: 10 }, { ngay: 15, coc: 20 }, { ngay: 30, coc: 30 }];
   var homQua = new Date(Date.now() - 86400000); homQua.setHours(23, 59, 0, 0);
   var spAnDemo = [{ ma: 'DPHN.POLO', ten: 'Đồng phục Hiển Nga áo Polo', tenGoc: 'Đồng phục Hiển Nga áo Polo', nhom: 'Nội bộ', hang: '', kc: '', dvt: 'cái', ny: 0, dl: 0, an: true }];
