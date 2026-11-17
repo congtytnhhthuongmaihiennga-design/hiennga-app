@@ -183,6 +183,7 @@ function xoaToanBoDon() {
 
 // Cùng việc trên nhưng gọi từ trang quản trị (chỉ quản trị; trang hỏi xác nhận 2 lần trước khi gọi).
 function xoaHetDonWeb(p, ti) {
+  if (!ti || ti.role !== 'admin') return { status: 'error', msg: 'Chỉ quản trị mới được xóa toàn bộ đơn.' }; // nhân viên dù có quyền nào cũng không được
   if (chu(p.xacNhan) !== 'XOA') return { status: 'error', msg: 'Thiếu xác nhận.' };
   var shD = layTab(TAB_DON, false), shC = layTab(TAB_CT, false);
   var nD = shD ? Math.max(0, shD.getLastRow() - 1) : 0, nC = shC ? Math.max(0, shC.getLastRow() - 1) : 0;

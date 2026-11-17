@@ -68,6 +68,7 @@ var COT_TON = {
   kho: ['Kho', 'Tên kho', 'Kho hàng', 'Name 1'],
   sl:  ['Số lượng', 'Khả dụng', 'SL', 'Tồn', 'Tồn kho', 'Số lượng tồn'],
   lo:  ['Số lô', 'Lô', 'Batch'],
+  ngay: ['Ngày nhập', 'Ngày nhập kho', 'Ngày nhập hàng', 'Ngày NK'],
   dvt: ['Đơn vị', 'ĐVT']
 };
 
@@ -86,7 +87,7 @@ var TIEU_DE = {
 var VAI_TRO = ['admin', 'nv', 'khachhang'];
 
 // Sheet Tồn kho riêng (cho người nhập kho): tiêu đề giống bản xuất phần mềm kho + tab hướng dẫn.
-var TIEU_DE_TON = ['Kho', 'Mã vật tư', 'Tên vật tư', 'ĐVT', 'Tồn'];
+var TIEU_DE_TON = ['Kho', 'Mã vật tư', 'Tên vật tư', 'ĐVT', 'Tồn', 'Ngày nhập'];
 var TAB_HUONG_DAN_TON = 'Hướng dẫn';
 var HUONG_DAN_TON = [
   'CẬP NHẬT TỒN KHO CHO APP HIỂN NGA',
@@ -100,5 +101,6 @@ var HUONG_DAN_TON = [
   '   Mã vật tư phải GIỐNG HỆT mã trong bảng giá. Gạch: ĐVT ghi như phần mềm (vd vien1.44), Tồn tính theo thùng (102.8 = 102 thùng + 0.8 thùng).',
   '',
   'Lưu ý: không đổi tên dòng tiêu đề (Kho, Mã vật tư, Tên vật tư, ĐVT, Tồn). Tồn âm / bằng 0 = hết hàng.',
+  'Ngày nhập (không bắt buộc): thêm cột tiêu đề "Ngày nhập", ghi ngày lô hàng về kho (vd 15/08/2026). App tô màu hàng tồn lâu để bán sale.',
   'Dán xong chờ tối đa 10 phút, rồi xem dòng 2 ở trên: app ghi lại số mã đã đọc được.'
 ];

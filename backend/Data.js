@@ -186,6 +186,15 @@ function quyCachThung(dvt, ten) {
   return { vt: v, m2: x < 5 ? x : 0 };
 }
 
+// Ngày nhập: ô ngày của Sheet, hoặc chữ dd/mm/yyyy, yyyy-mm-dd. Sai / trống -> null.
+function docNgayNhap(v) {
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  var s = String(v || '').trim(), m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  if (m) { var y = Number(m[3]); if (y < 100) y += 2000; var d1 = new Date(y, Number(m[2]) - 1, Number(m[1])); return isNaN(d1.getTime()) ? null : d1; }
+  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) { var d2 = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])); return isNaN(d2.getTime()) ? null : d2; }
+  return null;
+}
 function docTonKho() {
   var sh = layTabTon(true);
   var rows = sh.getDataRange().getValues();
@@ -221,7 +230,9 @@ function docTonKho() {
     var k = d.kho[tenKho] || (d.kho[tenKho] = { ten: tenKho, nhom: nhom, tong: 0, lo: [] });
     k.tong = lam3(k.tong + sl);
     var so = c.lo === undefined ? '' : chu(r[c.lo]);
-    if (so) k.lo.push({ so: so, sl: sl });
+    var nn = c.ngay === undefined ? null : docNgayNhap(r[c.ngay]);
+    if (nn) { var sN = Utilities.formatDate(nn, 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd'); if (!d.nhap || sN < d.nhap) d.nhap = sN; if (!d.nhapMoi || sN > d.nhapMoi) d.nhapMoi = sN; }
+    if (so || nn) k.lo.push({ so: so, sl: sl, ngay: nn ? Utilities.formatDate(nn, 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd') : '' });
   }
   Object.keys(data).forEach(function (ma) {
     var d = data[ma];

@@ -465,3 +465,13 @@ body.che-xem main{padding:0 0 30px;max-width:720px}
 .ga-zalo{margin-top:12px;padding:10px 12px;border-radius:12px;background:#FFF4DE;color:#7A4A00;font-size:13.5px;line-height:1.5}
 .ga-zalo .btn{width:auto;margin-top:8px;display:inline-flex}
 .ga-tai-ghi{background:var(--bg2);color:var(--t1)}
+.tuoi{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:999px;white-space:nowrap}
+.tuoi-moi{background:#E7F6EC;color:#1F7A3A}.tuoi-tb{background:#EEF1F6;color:#4A5468}.tuoi-lau{background:#FFF1DC;color:#9A5B00}.tuoi-rlau{background:#FDE4E4;color:#B42318}
+.tuoi-dong{display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding:9px 12px;border-radius:10px;font-size:13px;line-height:1.45}
+.tuoi-dong .ic{flex-shrink:0;margin-top:2px}
+.giu-ds{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+.giu-ds>span{font-size:12.5px}
+.chua-ten{display:block;margin:12px 0 4px;font-size:12px;font-weight:700;color:var(--t2)}
+.chua-ten input{display:block;width:100%;margin-top:4px;padding:10px;border:1.5px solid var(--bd2);border-radius:10px;background:var(--bg1);font-size:16px}
+.chua-ten input:focus{border-color:var(--c);outline:none}
+.bb{color:var(--loi)}

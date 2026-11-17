@@ -89,6 +89,8 @@
     return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear();
   }
   function laKhach() { return !S.sess || S.sess.role === 'khachhang'; }
+  function tuoiTon(iso) { if (!iso) return null; var t = new Date(iso + 'T00:00:00'); if (isNaN(t)) return null; var n = Math.max(0, Math.floor((Date.now() - t.getTime()) / 86400000));
+    return { n: n, muc: n <= 30 ? 'moi' : n <= 90 ? 'tb' : n <= 180 ? 'lau' : 'rlau', ten: n <= 30 ? 'Hàng mới' : n <= 90 ? 'Bình thường' : n <= 180 ? 'Tồn lâu' : 'Tồn rất lâu – nên sale', ngay: ('0' + t.getDate()).slice(-2) + '/' + ('0' + (t.getMonth() + 1)).slice(-2) + '/' + t.getFullYear() }; }
   function laNoiBo() { return !!S.sess && S.sess.role !== 'khachhang'; }
   function sdt() { return String(CFG.LIEN_HE_SDT || '').replace(/[^\d+]/g, ''); }
   // 0939182288 -> "093 918 22 88" (cách ghi trên trang Facebook công ty)
@@ -228,10 +230,12 @@
     if (!S.sess || !S.ton) return '';
     var d = S.ton[p.ma];
     if (!d || d.tong <= 0) return '<span class="ton het">' + (laNoiBo() ? 'Hết hàng' : 'Liên hệ') + '</span>';
-    var t = tierChinh(d);
-    return '<span class="ton ' + t + '">' + (t === 'nhanh' ? soTon(d.tier.nhanh, d) : NGAN_TIER[t]) + '</span>';
+    var t = tierChinh(d), tu = laNoiBo() ? tuoiTon(d.nhap) : null;
+    return '<span class="ton ' + t + '">' + (t === 'nhanh' ? soTon(d.tier.nhanh, d) : NGAN_TIER[t]) + '</span>' +
+      (tu && tu.n > 90 ? '<span class="tuoi tuoi-' + tu.muc + '" title="Nhập kho từ ' + tu.ngay + '">Tồn ' + tu.n + ' ngày</span>' : '');
   }
   // Sắp xếp "tồn nhiều": ưu tiên hàng có ngay, rồi mai có, rồi chờ hàng.
+  function ngayTon(p) { var d = S.ton && S.ton[p.ma], t = d && d.tong > 0 ? tuoiTon(d.nhap) : null; return t ? t.n : -1; }
   function tongTon(p) { var d = S.ton && S.ton[p.ma]; return d ? d.tier.nhanh * 1e8 + d.tier.mai * 1e4 + d.tier.cho : 0; }
   // Đã đăng nhập: giá đại lý là giá chính, giá niêm yết gạch ngang bên cạnh.
   function htmlGia(p, to) {
@@ -289,6 +293,7 @@
     if (S.sort === 'gia-tang') ds = ds.slice().sort(function (a, b) { return (giaSapXep(a) || 9e15) - (giaSapXep(b) || 9e15); });
     else if (S.sort === 'gia-giam') ds = ds.slice().sort(function (a, b) { return (giaSapXep(b) || 0) - (giaSapXep(a) || 0); });
     else if (S.sort === 'ton') ds = ds.slice().sort(function (a, b) { return tongTon(b) - tongTon(a); });
+    else if (S.sort === 'ton-lau') ds = ds.slice().sort(function (a, b) { return ngayTon(b) - ngayTon(a); });
     return ds;
   }
   function soLocDangBat() { return Object.keys(S.loc).filter(function (k) { return S.loc[k]; }).length; }
@@ -519,7 +524,7 @@
       danhSachHtml(ds, S.trang * MOI_TRANG, S.kieu);
   }
   function dsSapXep() {
-    return [['', 'Mặc định'], ['gia-tang', 'Giá thấp → cao'], ['gia-giam', 'Giá cao → thấp']].concat(S.sess && S.ton ? [['ton', 'Có hàng nhiều nhất']] : []);
+    return [['', 'Mặc định'], ['gia-tang', 'Giá thấp → cao'], ['gia-giam', 'Giá cao → thấp']].concat(S.sess && S.ton ? [['ton', 'Có hàng nhiều nhất']] : []).concat(laNoiBo() && S.ton && Object.keys(S.ton).some(function (m) { return S.ton[m].nhap; }) ? [['ton-lau', 'Tồn lâu nhất']] : []);
   }
   function veGanDay() {
     var ds = ganDay().map(function (m) { return S.byMa[m]; });
@@ -652,7 +657,12 @@
     if (!S.ton) return '<div class="mo">Đang tải tồn kho…</div>';
     var d = S.ton[p.ma], gio = S.tonLuc ? '<div class="ton-gio">' + ic('clock', 'ic-sm') + 'Tồn kho cập nhật ' + gioNgay(S.tonLuc) + '</div>' : '';
     // Nhân viên / quản trị: thấy phần đang giữ cho đơn + chừa hàng (số lớn ở trên đã là "Được bán").
-    var giuDong = laNoiBo() && d && d.giu ? '<div class="ton-giu">' + ic('lock', 'ic-sm') + '<span>Đang giữ cho đơn / chừa hàng: <b>' + soTon(d.giu, d, true) + '</b> · Tồn thực: ' + soTon(d.tonGoc, d, true) + '</span></div>' : '';
+    var giuDong = laNoiBo() && d && d.giu ? '<div class="ton-giu">' + ic('lock', 'ic-sm') + '<span>Đang giữ cho đơn / chừa hàng: <b>' + soTon(d.giu, d, true) + '</b> · Tồn thực: ' + soTon(d.tonGoc, d, true) +
+      (d.giuDs && d.giuDs.length ? '<span class="giu-ds">' + d.giuDs.map(function (g) {
+        return '<span><b>' + esc(g.ten) + '</b> · ' + so(g.sl) + ' ' + esc(g.dv) + ' · ' + (g.loai === 'chua' ? 'chừa' + (g.tt === 'giu' && g.han ? ' tới ' + ngay(g.han).slice(0, 5) : ' (chờ duyệt)') : 'đơn') + ' ' + esc(g.don) + '</span>';
+      }).join('') + '</span>' : '') + '</span></div>' : '';
+    var tu = laNoiBo() && d && d.tong > 0 ? tuoiTon(d.nhap) : null;
+    if (tu) giuDong = '<div class="tuoi-dong tuoi-' + tu.muc + '">' + ic('clock', 'ic-sm') + '<span>Nhập kho từ <b>' + tu.ngay + '</b> · đã tồn <b>' + tu.n + ' ngày</b> · ' + tu.ten + '</span></div>' + giuDong;
     if (!d || d.tong <= 0) return '<div class="ton-lon cho"><span class="cham"></span><div><b>Hết hàng' + (d && d.giu ? ' (đã giữ hết cho đơn)' : '') + '</b><small>Liên hệ để đặt hàng / hỏi ngày về</small></div></div>' + giuDong + gio;
     // Dòng lớn: lượng có sẵn (hoặc mai có / chờ hàng nếu kho gần không còn).
     var t = tierChinh(d), so1 = d.tier[t];
@@ -666,7 +676,7 @@
     // Tên kho, số lô: máy chủ chỉ gửi cho nhân viên/quản trị.
     if (laNoiBo() && d.kho && d.kho.length) html += '<div class="kho-ds">' + d.kho.map(function (k) {
       return '<div class="kho"><div class="kho-dong"><span>' + ic('box', 'ic-sm') + esc(k.ten) + '</span><span>' + soTon(k.tong, d, true) + '</span></div>' +
-        (k.lo && k.lo.length ? '<div class="lo">' + k.lo.map(function (l) { return 'Lô ' + esc(l.so) + ': ' + so(l.sl); }).join(' · ') + '</div>' : '') + '</div>';
+        (k.lo && k.lo.length ? '<div class="lo">' + k.lo.map(function (l) { return (l.so ? 'Lô ' + esc(l.so) : 'Lô') + ': ' + so(l.sl) + (l.ngay ? ' (nhập ' + l.ngay.slice(8, 10) + '/' + l.ngay.slice(5, 7) + ')' : ''); }).join(' · ') + '</div>' : '') + '</div>';
     }).join('') + '</div>';
     return html + giuDong + gio;
   }
@@ -831,7 +841,7 @@
   function htmlChuaDon(d) {
     if (d.loai !== 'chua') return '';
     var het = d.tt === 'giu' && d.han && new Date(d.han).getTime() < Date.now();
-    var s = '<div class="chua-tt' + (het ? ' het' : '') + '">' + ic('lock', 'ic-sm') + '<span>Chừa ' + d.soNgay + ' ngày';
+    var s = '<div class="chua-tt' + (het ? ' het' : '') + '">' + ic('lock', 'ic-sm') + '<span>' + (d.nguoiChua ? 'Người chừa: <b>' + esc(d.nguoiChua) + '</b><br>' : '') + 'Chừa ' + d.soNgay + ' ngày';
     if (d.tt === 'giu' && d.han) s += ' · giữ tới <b>' + ngay(d.han).slice(0, 5) + '</b> (' + conLai(d.han) + ')';
     else if (d.tt === 'moi') s += ' · chờ công ty duyệt giữ hàng';
     s += (d.coc ? '<br>Đặt cọc ' + tien(d.coc) + (d.daCoc >= d.coc ? ' – <b>đã nhận cọc</b>' : d.daCoc ? ' – đã nhận ' + tien(d.daCoc) : ' – <b>chưa cọc</b>') : '') +
@@ -883,7 +893,7 @@
   }
   function dongDon(d) {
     var mo = S.donMo === d.ma, het = d.tt === 'giu' && d.han && new Date(d.han).getTime() < Date.now();
-    var phu = gioNgay(d.ngay) + ' · ' + d.items.length + ' mã' + (d.loai === 'chua' ? ' · ' + (d.tt === 'giu' && d.han ? 'giữ tới ' + ngay(d.han).slice(0, 5) + ' (' + conLai(d.han) + ')' : 'chừa ' + d.soNgay + ' ngày') : '');
+    var phu = gioNgay(d.ngay) + ' · ' + d.items.length + ' mã' + (d.loai === 'chua' ? (d.nguoiChua ? ' · ' + esc(d.nguoiChua) : '') + ' · ' + (d.tt === 'giu' && d.han ? 'giữ tới ' + ngay(d.han).slice(0, 5) + ' (' + conLai(d.han) + ')' : 'chừa ' + d.soNgay + ' ngày') : '');
     var h = '<div class="dn' + (mo ? ' mo-ra' : '') + (het ? ' het' : '') + '"><button type="button" class="dn-dau" data-dn="' + esc(d.ma) + '">' +
       '<span class="dn-trai"><span class="dn-ma">' + esc(d.ma) + (d.loai === 'chua' ? ' ' + ic('lock', 'ic-xs') : '') + '</span><small>' + phu + '</small></span>' +
       '<span class="dn-phai"><b>' + tien(d.tong) + '</b><span class="tt tt-' + d.tt + '">' + (TEN_TT[d.tt] || d.tt) + '</span></span></button>';
@@ -929,6 +939,7 @@
         [['', 'Đặt hàng'], ['chua', 'Chừa hàng (giữ hàng)']].map(function (h) { return '<button type="button" class="chip' + ((f.loai || '') === h[0] ? ' on' : '') + '" data-don-loai="' + h[0] + '">' + h[1] + '</button>'; }).join('') + '</div>';
       if (chua) html += '<div class="chua-box"><div class="mo">Giữ hàng trong:</div><div class="chips">' + S.chuaCfg.map(function (c) {
           return '<button type="button" class="chip' + (c.ngay === nNgay ? ' on' : '') + '" data-don-ngay="' + c.ngay + '">' + c.ngay + ' ngày' + (c.coc ? ' <small>cọc ' + c.coc + '%</small>' : '') + '</button>'; }).join('') + '</div>' +
+        '<label class="chua-ten">Tên người chừa hàng <span class="bb">*</span><input data-don="nguoiChua" value="' + esc(f.nguoiChua || '') + '" placeholder="Vd: Anh Tâm – công trình Bình Khánh" autocomplete="off"></label>' +
         '<p class="chua-coc">' + (coc.tien ? 'Cần đặt cọc ' + coc.pc + '% ≈ <b>' + tien(coc.tien) + '</b>' : 'Không cần đặt cọc') + '</p>' +
         '<p class="mo">Gửi xong là số hàng được giữ ngay (khách khác không đặt trùng). Hiển Nga duyệt rồi mới tính ngày giữ; từ chối / hủy thì hàng trả lại. Gần hết hạn có thể xin gia hạn trong "Đơn của tôi".</p></div>';
       html += '<div class="sec">Giao hàng</div><div class="chips">' +
@@ -949,7 +960,8 @@
     var d = { items: S.gio.map(function (x) { return { ma: x.ma, sl: x.sl }; }), hinhThuc: f.hinhThuc || 'giao',
       tenKH: f.tenKH != null ? f.tenKH : (s.tenCty || s.name || ''), sdt: f.sdt != null ? f.sdt : (s.sdt || ''),
       diaChi: f.diaChi != null ? f.diaChi : (s.diaChi || ''), ngayCan: f.ngayCan || '', ghiChu: f.ghiChu || '',
-      loai: f.loai === 'chua' ? 'chua' : '', soNgay: f.loai === 'chua' ? (Number(f.soNgay) || (S.chuaCfg[0] || {}).ngay || 3) : 0 };
+      loai: f.loai === 'chua' ? 'chua' : '', soNgay: f.loai === 'chua' ? (Number(f.soNgay) || (S.chuaCfg[0] || {}).ngay || 3) : 0, nguoiChua: f.loai === 'chua' ? String(f.nguoiChua || '').trim() : '' };
+    if (d.loai && !d.nguoiChua) { toast('Nhập tên người chừa hàng'); var oc = document.querySelector('[data-don=nguoiChua]'); if (oc) oc.focus(); return; }
     if (d.hinhThuc === 'giao' && !String(d.diaChi).trim()) { toast('Nhập địa chỉ giao hàng'); return; }
     nut.disabled = true; nut.textContent = 'Đang gửi…';
     api('taoDon', d, true).then(function (res) {
@@ -1488,7 +1500,7 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden && !DEMO) kiemTraBanMoi(); });
   if (DEMO) {
     var sc = document.createElement('script');
-    sc.src = 'demo-data.js?v=15'; sc.onload = batDau;
+    sc.src = 'demo-data.js?v=16'; sc.onload = batDau;
     sc.onerror = function () { document.body.innerHTML = '<p style="padding:20px">Chưa cấu hình APPS_URL trong config.js.</p>'; };
     document.head.appendChild(sc);
   } else batDau();
