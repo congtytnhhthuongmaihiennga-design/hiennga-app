@@ -659,7 +659,7 @@
     // Nhân viên / quản trị: thấy phần đang giữ cho đơn + chừa hàng (số lớn ở trên đã là "Được bán").
     var giuDong = laNoiBo() && d && d.giu ? '<div class="ton-giu">' + ic('lock', 'ic-sm') + '<span>Đang giữ cho đơn / chừa hàng: <b>' + soTon(d.giu, d, true) + '</b> · Tồn thực: ' + soTon(d.tonGoc, d, true) +
       (d.giuDs && d.giuDs.length ? '<span class="giu-ds">' + d.giuDs.map(function (g) {
-        return '<span><b>' + esc(g.ten) + '</b> · ' + so(g.sl) + ' ' + esc(g.dv) + ' · ' + (g.loai === 'chua' ? 'chừa' + (g.tt === 'giu' && g.han ? ' tới ' + ngay(g.han).slice(0, 5) : ' (chờ duyệt)') : 'đơn') + ' ' + esc(g.don) + '</span>';
+        return '<span><b>' + esc(g.ten) + '</b>' + (g.kh ? ' (cho ' + esc(g.kh) + ')' : '') + ' · ' + so(g.sl) + ' ' + esc(g.dv) + ' · ' + (g.loai === 'chua' ? 'chừa' + (g.tt === 'giu' && g.han ? ' tới ' + ngay(g.han).slice(0, 5) : ' (chờ duyệt)') : 'đơn') + ' ' + esc(g.don) + '</span>';
       }).join('') + '</span>' : '') + '</span></div>' : '';
     var tu = laNoiBo() && d && d.tong > 0 ? tuoiTon(d.nhap) : null;
     if (tu) giuDong = '<div class="tuoi-dong tuoi-' + tu.muc + '">' + ic('clock', 'ic-sm') + '<span>Nhập kho từ <b>' + tu.ngay + '</b> · đã tồn <b>' + tu.n + ' ngày</b> · ' + tu.ten + '</span></div>' + giuDong;
@@ -841,7 +841,7 @@
   function htmlChuaDon(d) {
     if (d.loai !== 'chua') return '';
     var het = d.tt === 'giu' && d.han && new Date(d.han).getTime() < Date.now();
-    var s = '<div class="chua-tt' + (het ? ' het' : '') + '">' + ic('lock', 'ic-sm') + '<span>' + (d.nguoiChua ? 'Người chừa: <b>' + esc(d.nguoiChua) + '</b><br>' : '') + 'Chừa ' + d.soNgay + ' ngày';
+    var s = '<div class="chua-tt' + (het ? ' het' : '') + '">' + ic('lock', 'ic-sm') + '<span>' + (d.chuaCho ? 'Chừa cho: <b>' + esc(d.chuaCho) + '</b><br>' : '') + 'Chừa ' + d.soNgay + ' ngày';
     if (d.tt === 'giu' && d.han) s += ' · giữ tới <b>' + ngay(d.han).slice(0, 5) + '</b> (' + conLai(d.han) + ')';
     else if (d.tt === 'moi') s += ' · chờ công ty duyệt giữ hàng';
     s += (d.coc ? '<br>Đặt cọc ' + tien(d.coc) + (d.daCoc >= d.coc ? ' – <b>đã nhận cọc</b>' : d.daCoc ? ' – đã nhận ' + tien(d.daCoc) : ' – <b>chưa cọc</b>') : '') +
@@ -893,7 +893,7 @@
   }
   function dongDon(d) {
     var mo = S.donMo === d.ma, het = d.tt === 'giu' && d.han && new Date(d.han).getTime() < Date.now();
-    var phu = gioNgay(d.ngay) + ' · ' + d.items.length + ' mã' + (d.loai === 'chua' ? (d.nguoiChua ? ' · ' + esc(d.nguoiChua) : '') + ' · ' + (d.tt === 'giu' && d.han ? 'giữ tới ' + ngay(d.han).slice(0, 5) + ' (' + conLai(d.han) + ')' : 'chừa ' + d.soNgay + ' ngày') : '');
+    var phu = gioNgay(d.ngay) + ' · ' + d.items.length + ' mã' + (d.loai === 'chua' ? (d.chuaCho ? ' · ' + esc(d.chuaCho) : '') + ' · ' + (d.tt === 'giu' && d.han ? 'giữ tới ' + ngay(d.han).slice(0, 5) + ' (' + conLai(d.han) + ')' : 'chừa ' + d.soNgay + ' ngày') : '');
     var h = '<div class="dn' + (mo ? ' mo-ra' : '') + (het ? ' het' : '') + '"><button type="button" class="dn-dau" data-dn="' + esc(d.ma) + '">' +
       '<span class="dn-trai"><span class="dn-ma">' + esc(d.ma) + (d.loai === 'chua' ? ' ' + ic('lock', 'ic-xs') : '') + '</span><small>' + phu + '</small></span>' +
       '<span class="dn-phai"><b>' + tien(d.tong) + '</b><span class="tt tt-' + d.tt + '">' + (TEN_TT[d.tt] || d.tt) + '</span></span></button>';
@@ -939,7 +939,7 @@
         [['', 'Đặt hàng'], ['chua', 'Chừa hàng (giữ hàng)']].map(function (h) { return '<button type="button" class="chip' + ((f.loai || '') === h[0] ? ' on' : '') + '" data-don-loai="' + h[0] + '">' + h[1] + '</button>'; }).join('') + '</div>';
       if (chua) html += '<div class="chua-box"><div class="mo">Giữ hàng trong:</div><div class="chips">' + S.chuaCfg.map(function (c) {
           return '<button type="button" class="chip' + (c.ngay === nNgay ? ' on' : '') + '" data-don-ngay="' + c.ngay + '">' + c.ngay + ' ngày' + (c.coc ? ' <small>cọc ' + c.coc + '%</small>' : '') + '</button>'; }).join('') + '</div>' +
-        '<label class="chua-ten">Tên người chừa hàng <span class="bb">*</span><input data-don="nguoiChua" value="' + esc(f.nguoiChua || '') + '" placeholder="Vd: Anh Tâm – công trình Bình Khánh" autocomplete="off"></label>' +
+        '<label class="chua-ten">Chừa cho khách nào? <small class="mo">(không bắt buộc)</small><input data-don="chuaCho" value="' + esc(f.chuaCho || '') + '" placeholder="Vd: Anh Tâm – công trình Bình Khánh" autocomplete="off"></label>' +
         '<p class="chua-coc">' + (coc.tien ? 'Cần đặt cọc ' + coc.pc + '% ≈ <b>' + tien(coc.tien) + '</b>' : 'Không cần đặt cọc') + '</p>' +
         '<p class="mo">Gửi xong là số hàng được giữ ngay (khách khác không đặt trùng). Hiển Nga duyệt rồi mới tính ngày giữ; từ chối / hủy thì hàng trả lại. Gần hết hạn có thể xin gia hạn trong "Đơn của tôi".</p></div>';
       html += '<div class="sec">Giao hàng</div><div class="chips">' +
@@ -960,8 +960,7 @@
     var d = { items: S.gio.map(function (x) { return { ma: x.ma, sl: x.sl }; }), hinhThuc: f.hinhThuc || 'giao',
       tenKH: f.tenKH != null ? f.tenKH : (s.tenCty || s.name || ''), sdt: f.sdt != null ? f.sdt : (s.sdt || ''),
       diaChi: f.diaChi != null ? f.diaChi : (s.diaChi || ''), ngayCan: f.ngayCan || '', ghiChu: f.ghiChu || '',
-      loai: f.loai === 'chua' ? 'chua' : '', soNgay: f.loai === 'chua' ? (Number(f.soNgay) || (S.chuaCfg[0] || {}).ngay || 3) : 0, nguoiChua: f.loai === 'chua' ? String(f.nguoiChua || '').trim() : '' };
-    if (d.loai && !d.nguoiChua) { toast('Nhập tên người chừa hàng'); var oc = document.querySelector('[data-don=nguoiChua]'); if (oc) oc.focus(); return; }
+      loai: f.loai === 'chua' ? 'chua' : '', soNgay: f.loai === 'chua' ? (Number(f.soNgay) || (S.chuaCfg[0] || {}).ngay || 3) : 0, chuaCho: f.loai === 'chua' ? String(f.chuaCho || '').trim() : '' };
     if (d.hinhThuc === 'giao' && !String(d.diaChi).trim()) { toast('Nhập địa chỉ giao hàng'); return; }
     nut.disabled = true; nut.textContent = 'Đang gửi…';
     api('taoDon', d, true).then(function (res) {
@@ -1500,7 +1499,7 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden && !DEMO) kiemTraBanMoi(); });
   if (DEMO) {
     var sc = document.createElement('script');
-    sc.src = 'demo-data.js?v=16'; sc.onload = batDau;
+    sc.src = 'demo-data.js?v=17'; sc.onload = batDau;
     sc.onerror = function () { document.body.innerHTML = '<p style="padding:20px">Chưa cấu hình APPS_URL trong config.js.</p>'; };
     document.head.appendChild(sc);
   } else batDau();

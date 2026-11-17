@@ -98,7 +98,7 @@
     return { n: n, muc: n <= 30 ? 'moi' : n <= 90 ? 'tb' : n <= 180 ? 'lau' : 'rlau', ten: n <= 30 ? 'Hàng mới' : n <= 90 ? 'Bình thường' : n <= 180 ? 'Tồn lâu' : 'Tồn rất lâu – nên sale', ngay: ('0' + t.getDate()).slice(-2) + '/' + ('0' + (t.getMonth() + 1)).slice(-2) + '/' + t.getFullYear() }; }
   function nhanChua(d) {
     if (d.loai !== 'chua') return '';
-    var s = '<br><small class="qt-chua' + (hetHan(d) ? ' het' : '') + '">🔒 ' + (d.nguoiChua ? esc(d.nguoiChua) + ' · ' : '') + 'Chừa ' + d.soNgay + ' ngày' + (d.tt === 'giu' && d.han ? ' · hạn ' + ngayNgan(d.han) + (hetHan(d) ? ' – HẾT HẠN' : '') : '') + '</small>';
+    var s = '<br><small class="qt-chua' + (hetHan(d) ? ' het' : '') + '">🔒 ' + esc(d.nguoiTao || d.user) + ' chừa ' + d.soNgay + ' ngày' + (d.chuaCho ? ' · cho ' + esc(d.chuaCho) : '') + (d.tt === 'giu' && d.han ? ' · hạn ' + ngayNgan(d.han) + (hetHan(d) ? ' – HẾT HẠN' : '') : '') + '</small>';
     if (d.tt === 'giu' && d.xinGH) s += '<br><small class="qt-chua xin">⏳ Xin thêm ' + d.xinGH + ' ngày</small>';
     return s;
   }
@@ -155,7 +155,7 @@
     return S.don.filter(function (d) {
       if (S.loc && d.tt !== S.loc) return false;
       if (!q) return true;
-      return [d.ma, d.ten, d.sdt, d.user, d.diaChi, d.nguoiChua].concat(d.items.map(function (x) { return x.ma; })).join(' ').toLowerCase().indexOf(q) >= 0;
+      return [d.ma, d.ten, d.sdt, d.user, d.diaChi, d.chuaCho, d.nguoiTao].concat(d.items.map(function (x) { return x.ma; })).join(' ').toLowerCase().indexOf(q) >= 0;
     });
   }
   function veDon() {
@@ -170,7 +170,7 @@
     if (!ds.length) return '<div class="qt-trong">' + trong + '</div>';
     return '<table class="qt-bang"><thead><tr><th>Mã đơn</th><th>Ngày đặt</th><th>Đại lý / cửa hàng</th><th class="an-dt">Giao hàng</th><th class="an-dt">Mặt hàng</th><th class="so">Tổng tiền</th><th>Trạng thái</th></tr></thead><tbody>' +
       ds.map(function (d) {
-        return '<tr class="dong" data-don="' + esc(d.ma) + '"><td class="ma">' + esc(d.ma) + '</td><td>' + gio(d.ngay) + '</td><td><b>' + esc(d.ten) + '</b><br><small>' + esc(d.sdt) + ' · ' + esc(d.user) + '</small></td>' +
+        return '<tr class="dong" data-don="' + esc(d.ma) + '"><td class="ma">' + esc(d.ma) + '</td><td>' + gio(d.ngay) + '</td><td><b>' + esc(d.ten) + '</b><br><small>' + esc(d.sdt) + ' · ' + esc(d.nguoiTao && d.nguoiTao !== d.user ? d.nguoiTao + ' (' + d.user + ')' : d.user) + '</small></td>' +
           '<td class="an-dt">' + esc(d.hinhThuc) + (d.ngayCan ? '<br><small>cần ' + esc(d.ngayCan) + '</small>' : '') + '</td><td class="an-dt">' + d.items.length + ' mã</td>' +
           '<td class="so">' + tien(d.tong) + '</td><td>' + nhanTT(d.tt) + nhanChua(d) + '</td></tr>';
       }).join('') + '</tbody></table>';
@@ -200,7 +200,8 @@
       '<div class="qt-tt-ds"><span>Đại lý</span><b>' + esc(d.ten) + '</b><span>Tài khoản</span><div>' + esc(d.user) + '</div><span>SĐT</span><div>' + (d.sdt ? '<a href="tel:' + esc(d.sdt) + '">' + esc(d.sdt) + '</a>' : '—') + '</div>' +
       '<span>Ngày đặt</span><div>' + gio(d.ngay) + '</div><span>Hình thức</span><div>' + esc(d.hinhThuc) + (d.ngayCan ? ' · cần ngày <b>' + esc(d.ngayCan) + '</b>' : '') + '</div>' +
       (d.diaChi ? '<span>Địa chỉ giao</span><div>' + esc(d.diaChi) + '</div>' : '') + (d.ghiChu ? '<span>Ghi chú khách</span><div>' + esc(d.ghiChu) + '</div>' : '') +
-      (d.loai === 'chua' ? '<span>Người chừa</span><div><b>' + (esc(d.nguoiChua) || '<span class="qt-thieu">(chưa ghi)</span>') + '</b></div>' : '') +
+      '<span>' + (d.loai === 'chua' ? 'Người chừa' : 'Người làm đơn') + '</span><div><b>' + esc(d.nguoiTao || d.user) + '</b></div>' +
+      (d.loai === 'chua' && d.chuaCho ? '<span>Chừa cho khách</span><div>' + esc(d.chuaCho) + '</div>' : '') +
       (d.loai === 'chua' ? '<span>Chừa hàng</span><div><b>' + d.soNgay + ' ngày</b>' + (d.tt === 'giu' && d.han ? ' · giữ tới <b>' + ngayNgan(d.han) + '</b> <span class="qt-chua' + (hetHan(d) ? ' het' : '') + '">(' + conLai(d.han) + ')</span>' : d.tt === 'moi' ? ' · chờ duyệt (hạn tính từ ngày duyệt)' : '') + '</div>' : '') +
       (d.nguoiGiao ? '<span>Người giao</span><div><b>' + esc(d.nguoiGiao) + '</b></div>' : '') + (d.ngayGiao ? '<span>Đã giao lúc</span><div>' + gio(d.ngayGiao) + '</div>' : '') +
       (d.xuLy ? '<span>Người xử lý</span><div>' + esc(d.xuLy) + (d.capNhat ? ' · ' + gio(d.capNhat) : '') + '</div>' : '') + '</div>' +
@@ -234,7 +235,7 @@
     if (d.tt === 'giu' && d.xinGH) h += '<div class="qt-xin">⏳ Đại lý xin gia hạn thêm <b>' + d.xinGH + ' ngày</b>' +
       (cc ? '<span><button type="button" class="btn btn-cam btn-nho" data-qt-gh="' + d.xinGH + '">Đồng ý</button><button type="button" class="btn btn-vien btn-nho" data-qt-act="bo-xin">Không</button></span>' : '') + '</div>';
     if (d.tt === 'giu' && hetHan(d)) h += '<div class="qt-xin het">❗ Đã hết hạn chừa – hàng VẪN đang giữ. Chọn: gia hạn / chuyển thành đơn giao / nhả hàng.</div>';
-    h += '<label class="qt-nc">Người chừa hàng<input id="qt-nc" maxlength="80" value="' + esc(d.nguoiChua || '') + '"' + (cc ? '' : ' disabled') + ' placeholder="Tên người chừa"></label>';
+    h += '<label class="qt-nc">Chừa cho khách<input id="qt-nc" maxlength="80" value="' + esc(d.chuaCho || '') + '"' + (cc ? '' : ' disabled') + ' placeholder="Tên khách / công trình (không bắt buộc)"></label>';
     h += '<div class="qt-coc"><label>Cọc yêu cầu<input id="qt-coc" inputmode="numeric" value="' + (d.coc || 0) + '"' + (ccoc ? '' : ' disabled') + '></label>' +
       '<label>Đã nhận cọc<input id="qt-dacoc" inputmode="numeric" value="' + (d.daCoc || 0) + '"' + (ccoc ? '' : ' disabled') + '></label>' +
       '<div class="qt-coc-tt">' + (d.coc ? (d.daCoc >= d.coc ? '✅ Đủ cọc' : '⚠️ Còn thiếu ' + tien(d.coc - (d.daCoc || 0))) : 'Không yêu cầu cọc') + '</div></div>';
@@ -249,7 +250,7 @@
     var d = don(S.moMa);
     if (!d) return;
     var p = { ma: d.ma, ghiChuNB: $('qt-nb') ? $('qt-nb').value : undefined }, gc = giaTriCoc();
-    if (d.loai === 'chua') { p.coc = gc.coc; p.daCoc = gc.daCoc; if ($('qt-nc') && !$('qt-nc').disabled) p.nguoiChua = $('qt-nc').value.trim(); }
+    if (d.loai === 'chua') { p.coc = gc.coc; p.daCoc = gc.daCoc; if ($('qt-nc') && !$('qt-nc').disabled) p.chuaCho = $('qt-nc').value.trim(); }
     Object.keys(them).forEach(function (k) { p[k] = them[k]; });
     api('capNhatDon', p, true).then(function (r) {
       if (!r || r.status !== 'ok') throw new Error((r && r.msg) || 'lỗi');
@@ -1217,5 +1218,5 @@
     veMenu(); ve(); taiDon();
     clearInterval(batDau._t); batDau._t = setInterval(function () { if (!document.hidden) taiDon(true); }, 60000); // tự làm mới mỗi phút
   }
-  if (DEMO) { var sc = document.createElement('script'); sc.src = 'demo-data.js?v=16'; sc.onload = batDau; document.head.appendChild(sc); } else batDau();
+  if (DEMO) { var sc = document.createElement('script'); sc.src = 'demo-data.js?v=17'; sc.onload = batDau; document.head.appendChild(sc); } else batDau();
 })();
