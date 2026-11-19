@@ -1003,10 +1003,16 @@
   function laDienThoai() {
     try { return !!(navigator.share && navigator.canShare && navigator.canShare({ files: [new File([new Blob(['x'], { type: 'image/jpeg' })], 'a.jpg', { type: 'image/jpeg' })] })); } catch (e) { return false; }
   }
-  function cfgAnh() { // chân ảnh: tên + SĐT cửa hàng (đại lý = cửa hàng của đại lý, không lộ Hiển Nga)
-    var c = S.anhCfg, nb = laNoiBoAnh() || !S.sess;
-    if (c.vai !== (S.sess ? S.sess.role : 'khach')) c = S.anhCfg = { vai: S.sess ? S.sess.role : 'khach', chan: true,
-      tenCH: nb ? (CFG.LIEN_HE_TEN || CFG.TEN_APP || '') : (S.sess.tenCty || S.sess.name || ''), sdtCH: nb ? (CFG.LIEN_HE_SDT || '') : (S.sess.sdt || '') };
+  // SĐT trong tab Users có thể bị Sheet làm mất số 0 đầu (939…) hoặc ghi nhiều số "939008123/0917774765" -> sửa lại, tối đa 2 số.
+  function sdtTK(v) { return String(v || '').split(/[\/,;|]+|\s{2,}/).map(function (x) { x = x.replace(/[^\d]/g, ''); return x.length === 9 && /^[235789]/.test(x) ? '0' + x : x; }).filter(function (x) { return /^0\d{9,10}$/.test(x); }).slice(0, 2).join(' / '); }
+  function cfgAnh() { // chân ảnh: tên + SĐT người gửi. Nhân viên = SĐT tài khoản nhân viên; đại lý = cửa hàng của đại lý (không lộ Hiển Nga); khách = SĐT công ty
+    var c = S.anhCfg, s = S.sess, vai = s ? s.role + '|' + s.username : 'khach';
+    if (c.vai !== vai || c.pb !== 2) {
+      var tenCty = CFG.LIEN_HE_TEN || CFG.TEN_APP || '', ten = s ? String(s.name || '').trim() : '';
+      c = S.anhCfg = { vai: vai, pb: 2, chan: true,
+        tenCH: !s ? tenCty : laNoiBoAnh() ? (ten && ten.toLowerCase().indexOf(tenCty.toLowerCase()) < 0 ? tenCty + ' – ' + ten : ten || tenCty) : (s.tenCty || ten),
+        sdtCH: !s ? (CFG.LIEN_HE_SDT || '') : laNoiBoAnh() ? (sdtTK(s.sdt) || CFG.LIEN_HE_SDT || '') : (sdtTK(s.sdt) || s.sdt || '') };
+    }
     return c;
   }
   function doiTuongAnh() { return laNoiBoAnh() && GA.dt === 'dl' ? 'dl' : 'le'; }
