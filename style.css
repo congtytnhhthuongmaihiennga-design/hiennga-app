@@ -475,3 +475,13 @@ body.che-xem main{padding:0 0 30px;max-width:720px}
 .chua-ten input{display:block;width:100%;margin-top:4px;padding:10px;border:1.5px solid var(--bd2);border-radius:10px;background:var(--bg1);font-size:16px}
 .chua-ten input:focus{border-color:var(--c);outline:none}
 .bb{color:var(--loi)}
+.ct-video{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:10px 0 2px;padding:11px 14px;border-radius:12px;background:#111827;color:#fff;font-weight:700;font-size:15px}
+.ct-video:active{opacity:.85}
+.xem-than .ct-video{margin:0 0 12px}
+.video-nen{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px}
+.video-khung{width:min(960px,100%);aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden}
+.video-khung.doc{width:auto;height:min(78vh,720px);aspect-ratio:9/16;max-width:100%}
+.video-khung iframe{width:100%;height:100%;border:0;display:block}
+.video-nut{display:flex;gap:10px}
+.video-nut .btn{width:auto}
+.video-ghi{color:#ccc;font-size:13px;text-align:center}

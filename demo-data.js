@@ -31,6 +31,11 @@
   for (i = 1; i <= 10; i++) data.push({ ma: 'SM' +('00' + i).slice(-3), hang: chon(HANG), nhom: 'Sơn', ten: chon(['Sơn nội thất mẫu', 'Sơn ngoại thất mẫu', 'Sơn lót mẫu']) + ' ' + i,
     kc: '', loai: chon(['Nội thất', 'Ngoại thất', 'Sơn lót']), dvt: 'thùng', dg: '', ny: (800 + rnd(80) * 25) * 1000, dl: (650 + rnd(60) * 25) * 1000, gc: '', mau: chon(['Trắng', 'Kem', 'Xanh nhạt']), congNang: '', tinhNang: '', hoaVan: '', men: chon(['Bóng', 'Mờ']), dungTich: chon(['5 lít', '18 lít']) });
 
+  data.forEach(function (p, i) { // trọng lượng thử: gạch ≈ 20 kg / m² mỗi thùng; hàng khác vài kg
+    var qcK = String(p.dg).match(/([\d.]+) m²/);
+    if (p.dvt === 'm²' && qcK) p.kg = Math.round(Number(qcK[1]) * 20 * 10) / 10; else if (i % 3 === 0) p.kg = 2 + (i % 7) * 3;
+    if (i === 0) p.video = 'https://www.youtube.com/watch?v=VIDEOTHU001';
+  });
   data.forEach(function (p) {
     if (rnd(5) === 0) return; // ~20% hết hàng
     var d = { tong: 0, dvt: p.dvt === 'm²' ? 'thùng' : p.dvt, tier: { nhanh: 0, mai: 0, cho: 0 }, kho: [] };
@@ -205,13 +210,17 @@
         if (sp) return tre({ status: 'error', msg: 'Mã ' + p.ma + ' đã có trong bảng giá – dùng "Sửa".' });
         sp = { ma: p.ma, hang: '', nhom: '', ten: '', kc: '', loai: '', dvt: '', dg: '', ny: 0, dl: 0 }; data.push(sp);
       } else if (!sp) return tre({ status: 'error', msg: 'Không thấy mã ' + p.ma });
-      Object.keys(f).forEach(function (k) { sp[k] = k === 'ny' || k === 'dl' ? Number(f[k]) || 0 : f[k]; });
+      Object.keys(f).forEach(function (k) { sp[k] = k === 'ny' || k === 'dl' ? Number(f[k]) || 0 : k === 'kg' ? (parseFloat(String(f[k]).replace(',', '.')) || '') : f[k]; });
       if (f.tenHien) sp.ten = f.tenHien;
       if (p.an === true || p.an === 'true') { data = data.filter(function (x) { return x.ma !== sp.ma; }); spAnDemo.unshift(Object.assign({}, sp, { an: true })); }
       if ((p.an === false || p.an === 'false') && spAnDemo.some(function (x) { return x.ma === p.ma; })) { var h0 = spAnDemo.filter(function (x) { return x.ma === p.ma; })[0]; spAnDemo = spAnDemo.filter(function (x) { return x !== h0; }); delete h0.an; data.push(h0); }
       ghiNK(sess, p.moi ? 'Thêm sản phẩm' : 'Sửa sản phẩm', '', p.ma + ': ' + Object.keys(f).join(', '));
       return tre({ status: 'ok', msg: (p.moi ? 'Đã thêm mã ' : 'Đã lưu mã ') + p.ma + ' (thử)' });
     }
+    if (action === 'xoaDon') { if (!sess || sess.role !== 'admin') return tre({ status: 'error', msg: 'forbidden' }); var dsX = p.ds || [], truoc = donDemo.length, giuX = donDemo.filter(function (d) { return dsX.indexOf(d.ma) >= 0 && ['moi', 'giu', 'xacnhan', 'danggiao'].indexOf(d.tt) >= 0; }).length;
+      for (var iX = donDemo.length - 1; iX >= 0; iX--) if (dsX.indexOf(donDemo[iX].ma) >= 0) donDemo.splice(iX, 1);
+      var nX = truoc - donDemo.length; if (!nX) return tre({ status: 'error', msg: 'Không thấy đơn đã chọn' }); ghiNK(sess, 'Xóa đơn', '', 'Xóa ' + nX + ' đơn: ' + dsX.join(', '));
+      return tre({ status: 'ok', so: nX, traHang: giuX, msg: 'Đã xóa ' + nX + ' đơn' + (giuX ? ' – trả lại hàng giữ của ' + giuX + ' đơn chưa xuất' : '') }); }
     if (action === 'xoaHetDon') { if (!sess || sess.role !== 'admin') return tre({ status: 'error', msg: 'forbidden' }); var n0 = donDemo.length; donDemo.length = 0; ghiNK(sess, 'Xóa toàn bộ đơn hàng', '', n0 + ' đơn'); return tre({ status: 'ok', msg: 'Đã xóa ' + n0 + ' đơn hàng (thử)' }); }
     if (action === 'dsSanPhamAn') return tre(coQ(sess, 'sanpham') ? { status: 'ok', data: sao(spAnDemo) } : { status: 'error', msg: 'forbidden' });
     if (action === 'dsBaoGia') return tre(coQ(sess, 'baogia') ? { status: 'ok', data: sao(bgDemo) } : { status: 'error', msg: 'forbidden' });

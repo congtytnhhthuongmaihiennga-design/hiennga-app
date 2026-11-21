@@ -576,7 +576,7 @@
     var html = dauSheet(esc(g.ten)) + '<div class="sh-body">';
     html += '<div class="anh-o anh-lon' + (anh.length ? '' : ' chua-anh') + '">' + (anh.length ? '<img class="anh" alt="" src="' + esc(coAnh(anh[S.anhIdx] || anh[0], 1200)) + '" data-icon="' + iconNhom(p) + '">' : ic(iconNhom(p))) +
       (anh.length > 1 ? '<button type="button" class="anh-nav trai" data-anh="-1" aria-label="Ảnh trước">' + ic('chevL') + '</button><button type="button" class="anh-nav phai" data-anh="1" aria-label="Ảnh sau">' + ic('chevR') + '</button><span class="anh-so">' + (S.anhIdx + 1) + '/' + anh.length + '</span>' : '') + '</div>';
-    html += '<h2 class="ct-ten">' + esc(p._ten) + '</h2>' +
+    html += nutVideo(p) + '<h2 class="ct-ten">' + esc(p._ten) + '</h2>' +
       '<button type="button" class="ct-ma" data-act="chep-ma" data-ma="' + esc(p.ma) + '" title="Chép mã">Mã SP: <b>' + esc(p.ma) + '</b>' + ic('copy', 'ic-sm') + '</button>' +
       '<div class="ct-tags">' + (p.hang ? (logoHang(p.hang) ? '<span class="tag hang-logo"><img src="' + esc(logoHang(p.hang)) + '" alt="' + esc(p.hang) + '"></span>' : '<span class="tag hang">' + esc(tenHang(p.hang)) + '</span>') : '') + nhanCap(p) + '<span class="tag">' + esc(g.ten) + '</span>' +
       [p._kc, p.loai].filter(String).map(function (t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('') + '</div>';
@@ -610,7 +610,7 @@
     }
 
     // Thông tin
-    var tt = [['Hãng', p.hang], ['Nhóm hàng', p.nhom], ['Kích cỡ / Quy cách', p._kc], ['Loại', p.loai], ['Đơn vị', p.dvt], ['Đóng gói', p.dg],
+    var tt = [['Hãng', p.hang], ['Nhóm hàng', p.nhom], ['Kích cỡ / Quy cách', p._kc], ['Loại', p.loai], ['Đơn vị', p.dvt], ['Đóng gói', p.dg], ['Trọng lượng', kgChu(p)],
       ['Màu', p.mau], ['Công năng', p.congNang], ['Tính năng', p.tinhNang], ['Hoa văn', p.hoaVan], ['Men / bề mặt', p.men], ['Dung tích', p.dungTich], ['Ghi chú', p.gc]]
       .filter(function (r) { return r[1]; });
     if (tt.length) html += '<div class="sec">Thông tin</div><div class="box"><table class="tt">' + tt.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>';
@@ -851,6 +851,26 @@
     return s;
   }
   function giaDon(p) { return p.dl > 0 ? p.dl : p.ny; }
+  // Link video: YouTube (watch / youtu.be / shorts / live) và Google Drive phát ngay trong app; link khác mở tab mới.
+  function nhungVideo(u) {
+    u = String(u || '').trim(); var m;
+    if ((m = u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/))([\w-]{11})/))) return { loai: 'yt', src: 'https://www.youtube.com/embed/' + m[1] + '?rel=0&playsinline=1&autoplay=1', mo: 'https://youtu.be/' + m[1], doc: /shorts\//.test(u) };
+    if ((m = u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:.*&)?id=)([-\w]{20,})/))) return { loai: 'drive', src: 'https://drive.google.com/file/d/' + m[1] + '/preview', mo: 'https://drive.google.com/file/d/' + m[1] + '/view' };
+    return /^https?:\/\//i.test(u) ? { loai: 'khac', mo: u } : null;
+  }
+  function nutVideo(p) { return nhungVideo(p.video) ? '<button type="button" class="ct-video" data-act="xem-video" data-ma="' + esc(p.ma) + '">' + '▶ Xem video sản phẩm</button>' : ''; }
+  function moVideo(ma) {
+    var p = S.byMa[ma], v = p && nhungVideo(p.video); if (!v) return;
+    if (v.loai === 'khac') { window.open(v.mo, '_blank', 'noopener'); return; }
+    var nen = document.createElement('div'); nen.className = 'video-nen';
+    nen.innerHTML = '<div class="video-khung' + (v.doc ? ' doc' : '') + '"><iframe src="' + esc(v.src) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>' +
+      '<div class="video-nut"><a class="btn btn-vien btn-nho" href="' + esc(v.mo) + '" target="_blank" rel="noopener">Mở bằng ' + (v.loai === 'yt' ? 'YouTube' : 'Google Drive') + '</a><button type="button" class="btn btn-chinh btn-nho" data-dong-video="1">Đóng</button></div>' +
+      (v.loai === 'drive' ? '<p class="video-ghi">Không phát được? Link Drive phải chia sẻ "Bất kỳ ai có đường liên kết".</p>' : '');
+    nen.addEventListener('click', function (e) { if (e.target === nen || e.target.hasAttribute('data-dong-video')) nen.remove(); });
+    document.body.appendChild(nen);
+  }
+  // Trọng lượng: gạch / ngói tính kg cho 1 thùng, hàng khác kg cho 1 đơn vị bán.
+  function kgChu(p) { return p.kg > 0 ? so(p.kg) + ' kg / ' + donViDat(p) : ''; }
   function donViDat(p) { var qd = quyDoi(p); return qd && /^m(2|²)$/i.test(String(p.dvt || '').trim()) ? 'thùng' : (p.dvt || 'đơn vị'); }
   function tienDong(p, sl) {
     var qd = quyDoi(p), laM2 = qd && /^m(2|²)$/i.test(String(p.dvt || '').trim());
@@ -950,7 +970,7 @@
         ((f.hinhThuc || 'giao') === 'giao' ? '<label>Địa chỉ giao<input data-don="diaChi" value="' + esc(f.diaChi != null ? f.diaChi : (s.diaChi || '')) + '"></label>' : '') +
         '<label>Ghi chú<input data-don="ghiChu" value="' + esc(f.ghiChu || '') + '" placeholder="Giao buổi sáng, gọi trước…"></label></div>';
     }
-    html += '</div>' + (S.gio.length ? '<div class="sh-foot"><div class="gio-chot"><small>' + S.gio.length + ' mã</small><b>' + tien(tongGio()) + '</b></div>' +
+    html += '</div>' + (S.gio.length ? '<div class="sh-foot"><div class="gio-chot"><small>' + S.gio.length + ' mã' + (function () { var kg = 0; S.gio.forEach(function (it) { var p = S.byMa[it.ma]; if (p && p.kg > 0) kg += p.kg * (Number(it.sl) || 0); }); return kg ? ' · ≈ ' + so(Math.round(kg)) + ' kg' : ''; })() + '</small><b>' + tien(tongGio()) + '</b></div>' +
       '<button type="button" class="btn btn-chinh" data-act="gui-don">' + ((LS.get('don_nhap') || {}).loai === 'chua' ? 'Gửi yêu cầu chừa' : 'Gửi đơn') + '</button></div>' : '');
     var cuon = $('sheet').getAttribute('data-loai') === 'gio' ? $('sheet').scrollTop : 0;
     moSheet(html, 'gio');
@@ -1309,13 +1329,13 @@
     if (!p) { $('main').innerHTML = S.items.length ? '<div class="trong">' + ic('search') + '<b>Không tìm thấy mã ' + esc(S.xem) + '</b></div>' : khungTai(); return; }
     document.title = p._ten;
     var anh = anhCua(p.ma), idx = Math.min(S.anhIdx || 0, Math.max(anh.length - 1, 0)), lg = p.hang ? logoHang(p.hang) : '';
-    var tt = [['Hãng', p.hang ? tenHang(p.hang) : ''], ['Mã sản phẩm', p.ma], ['Kích cỡ / Quy cách', p._kc], ['Loại', p.loai], ['Đóng gói', p.dg], ['Màu', p.mau], ['Công năng', p.congNang],
+    var tt = [['Hãng', p.hang ? tenHang(p.hang) : ''], ['Mã sản phẩm', p.ma], ['Kích cỡ / Quy cách', p._kc], ['Loại', p.loai], ['Đóng gói', p.dg], ['Trọng lượng', kgChu(p)], ['Màu', p.mau], ['Công năng', p.congNang],
       ['Tính năng', p.tinhNang], ['Hoa văn', p.hoaVan], ['Men / bề mặt', p.men], ['Dung tích', p.dungTich]].filter(function (r) { return r[1]; });
     var dt = String(S.xemDT || '').replace(/[^\d+]/g, '');
     var html = '<div class="xem">' +
       '<div class="anh-o xem-anh' + (anh.length ? '' : ' chua-anh') + '">' + (anh.length ? '<img class="anh" alt="" src="' + esc(coAnh(anh[idx], 1400)) + '" data-icon="' + iconNhom(p) + '">' : ic(iconNhom(p))) +
       (anh.length > 1 ? '<button type="button" class="anh-nav trai" data-anh="-1" aria-label="Ảnh trước">' + ic('chevL') + '</button><button type="button" class="anh-nav phai" data-anh="1" aria-label="Ảnh sau">' + ic('chevR') + '</button><span class="anh-so">' + (idx + 1) + '/' + anh.length + '</span>' : '') + '</div>' +
-      '<div class="xem-than">' + (lg ? '<img class="xem-logo" src="' + esc(lg) + '" alt="">' : '') +
+      '<div class="xem-than">' + nutVideo(p) + (lg ? '<img class="xem-logo" src="' + esc(lg) + '" alt="">' : '') +
       '<h1 class="ct-ten">' + esc(p._ten) + '</h1><div class="ct-tags">' + nhanCap(p) + (p._kc ? '<span class="tag">' + esc(p._kc) + '</span>' : '') + '</div>' +
       (tt.length ? '<div class="box" style="margin-top:14px"><table class="tt">' + tt.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>' : '') +
       (S.xemCH || dt ? '<div class="xem-lh"><div><small>Liên hệ mua hàng</small><b>' + esc(S.xemCH || '') + '</b>' + (dt ? '<span>' + esc(dt) + '</span>' : '') + '</div>' +
@@ -1398,6 +1418,7 @@
       case 'loc': moLoc(); break;
       case 'xoa-loc': S.loc = {}; S.chiConHang = false; veTrang(); moLoc(); break;
       case 'con-hang': S.chiConHang = !S.chiConHang; S.trang = 1; veTrang(); break;
+      case 'xem-video': moVideo(el.getAttribute('data-ma')); break;
       case 'them-tem': themTem(el.getAttribute('data-ma')); toast('Đã thêm vào giỏ tem (' + S.gioTem.length + ' mã) – ' + (S.sess && S.sess.role !== 'khachhang' ? 'in ở Trang quản trị → In tem giá' : 'mở ở menu tài khoản')); break;
       case 'tem-ds': {
         var dsIn = dsHienThi().slice(0, 300);
@@ -1506,7 +1527,7 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden && !DEMO) kiemTraBanMoi(); });
   if (DEMO) {
     var sc = document.createElement('script');
-    sc.src = 'demo-data.js?v=19'; sc.onload = batDau;
+    sc.src = 'demo-data.js?v=20'; sc.onload = batDau;
     sc.onerror = function () { document.body.innerHTML = '<p style="padding:20px">Chưa cấu hình APPS_URL trong config.js.</p>'; };
     document.head.appendChild(sc);
   } else batDau();

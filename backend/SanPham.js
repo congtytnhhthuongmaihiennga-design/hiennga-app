@@ -4,10 +4,12 @@
 // Kèm: link ảnh (ghi vào Sheet Hình ảnh) và "Mã bên kho" khi phần mềm kho dùng mã khác (tab "Nối mã").
 // Không xóa dòng: muốn bỏ mã thì đánh dấu "Ẩn trên app" (cột Hiện trên app = Không).
 // ============================================================
-var TRUONG_SP = ['hang', 'nhom', 'ten', 'tenHien', 'kc', 'loai', 'dvt', 'dg', 'ny', 'dl', 'nyV', 'dlV', 'gc', 'mau', 'congNang', 'tinhNang', 'hoaVan', 'men', 'dungTich'];
+var TRUONG_SP = ['hang', 'nhom', 'ten', 'tenHien', 'kc', 'loai', 'dvt', 'dg', 'kg', 'ny', 'dl', 'nyV', 'dlV', 'gc', 'mau', 'congNang', 'tinhNang', 'hoaVan', 'men', 'dungTich', 'video'];
 var TEN_TRUONG = { hang: 'Hãng', nhom: 'Nhóm hàng', ten: 'Tên hàng', tenHien: 'Tên hiển thị', kc: 'Kích cỡ / Quy cách', loai: 'Loại', dvt: 'Đơn vị',
   dg: 'Đóng gói', ny: 'Giá niêm yết', dl: 'Giá đại lý', nyV: 'Giá NY / viên', dlV: 'Giá ĐL / viên', gc: 'Ghi chú', hien: 'Hiện trên app', mau: 'Màu', congNang: 'Công năng', tinhNang: 'Tính năng',
-  hoaVan: 'Hoa văn', men: 'Men', dungTich: 'Dung tích' };
+  hoaVan: 'Hoa văn', men: 'Men', dungTich: 'Dung tích', kg: 'Trọng lượng (kg)', video: 'Link video' };
+var LA_SO_LE = { kg: 1 }; // số có phần lẻ (28,5 kg)
+function soLe(v) { var n = parseFloat(String(v == null ? '' : v).replace(/\s/g, '').replace(',', '.')); return isFinite(n) && n > 0 ? Math.round(n * 1000) / 1000 : ''; }
 var LA_GIA = { ny: 1, dl: 1, nyV: 1, dlV: 1 };
 
 function bangGiaTho() {
@@ -21,7 +23,7 @@ function timDongMa(b, ma) {
   for (var i = b.hi + 1; i < b.rows.length; i++) if (chu(b.rows[i][b.c.ma]).toUpperCase() === k) return i;
   return -1;
 }
-function anGiaTri(k, v) { return LA_GIA[k] ? (soTien(v) || 0) : chu(v); }
+function anGiaTri(k, v) { return LA_GIA[k] ? (soTien(v) || 0) : LA_SO_LE[k] ? soLe(v) : chu(v); }
 
 // Đọc đủ trường 1 mã (kể cả mã đang ẩn) để mở form sửa.
 function docSanPham(p) {
@@ -59,7 +61,7 @@ function luuSanPham(p, ti) {
       can.forEach(function (k) { b.sh.getRange(b.hi + 1, cot + 1).setValue(TEN_TRUONG[k]).setFontWeight('bold'); b.c[k] = cot; cot++; });
     }
     var rong = Math.max(b.sh.getLastColumn(), b.rows[b.hi].length);
-    var giaTri = function (k, v) { return LA_GIA[k] ? Math.max(0, Math.round(Number(String(v).replace(/[^\d]/g, '')) || 0)) : chu(v).slice(0, 500); };
+    var giaTri = function (k, v) { return LA_GIA[k] ? Math.max(0, Math.round(Number(String(v).replace(/[^\d]/g, '')) || 0)) : LA_SO_LE[k] ? soLe(v) : chu(v).slice(0, 500); };
     if (moi) {
       var dong = []; for (var j = 0; j < rong; j++) dong.push('');
       dong[b.c.ma] = ma;

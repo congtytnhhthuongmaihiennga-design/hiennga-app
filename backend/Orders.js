@@ -201,6 +201,39 @@ function docDon(loc, gioiHan) {
 }
 function boDong(d) { delete d._dong; return d; }
 
+// Xóa từng đơn đã chọn (chỉ quản trị). Đơn đang giữ hàng (chờ duyệt / chừa / đã xác nhận / đang giao) bị xóa
+// -> hàng được trả lại "Được bán" ngay. Đơn đã giao: kho đã trừ trong Sheet Tồn kho, xóa đơn không đổi tồn.
+function xoaDon(p, ti) {
+  var ds = p.ds; if (typeof ds === 'string') { try { ds = JSON.parse(ds); } catch (e) { ds = String(ds).split(','); } }
+  ds = (ds || []).map(chu).filter(String).slice(0, 300);
+  if (!ds.length) return { status: 'error', msg: 'Chưa chọn đơn nào.' };
+  var can = {}; ds.forEach(function (m) { can[m] = 1; });
+  var lock = LockService.getScriptLock(); lock.waitLock(30000);
+  var xoa = [], traHang = 0, nCT = 0;
+  try {
+    var shD = layTab(TAB_DON, false), shC = layTab(TAB_CT, false);
+    if (!shD || shD.getLastRow() < 2) return { status: 'error', msg: 'Không có đơn nào.' };
+    var hD = dauCot(shD), cMa = hD.indexOf('Mã đơn'), cTT = hD.indexOf('Trạng thái'), cTong = hD.indexOf('Tổng tiền'), cTen = hD.indexOf('Đại lý / cửa hàng');
+    var maTT = {}; Object.keys(TRANG_THAI).forEach(function (k) { maTT[TRANG_THAI[k]] = k; });
+    var v = shD.getRange(2, 1, shD.getLastRow() - 1, hD.length).getValues();
+    for (var i = v.length - 1; i >= 0; i--) {
+      var ma = chu(v[i][cMa]); if (!can[ma]) continue;
+      var tt = maTT[chu(v[i][cTT])] || 'moi';
+      if (TT_GIU_HANG.indexOf(tt) >= 0) traHang++;
+      xoa.push(ma + ' (' + chu(v[i][cTen]) + ' · ' + TRANG_THAI[tt] + ' · ' + tienVN(Number(v[i][cTong]) || 0) + ')');
+      shD.deleteRow(i + 2);
+    }
+    if (shC && shC.getLastRow() > 1) {
+      var cM2 = dauCot(shC).indexOf('Mã đơn'), v2 = shC.getRange(2, cM2 + 1, shC.getLastRow() - 1, 1).getValues();
+      for (var j = v2.length - 1; j >= 0; j--) if (can[chu(v2[j][0])]) { shC.deleteRow(j + 2); nCT++; }
+    }
+  } finally { lock.releaseLock(); }
+  if (!xoa.length) return { status: 'error', msg: 'Không thấy đơn đã chọn (có thể đã bị xóa).' };
+  demXoa('giu');
+  ghiNhatKy(ti, 'Xóa đơn', xoa.length === 1 ? xoa[0].split(' ')[0] : '', 'Xóa ' + xoa.length + ' đơn: ' + xoa.join('; ').slice(0, 900));
+  return { status: 'ok', so: xoa.length, traHang: traHang, msg: 'Đã xóa ' + xoa.length + ' đơn' + (traHang ? ' – trả lại hàng giữ của ' + traHang + ' đơn chưa xuất' : '') };
+}
+
 function donCuaToi(ti) {
   return { status: 'ok', data: docDon({ user: ti.user }, 100).map(boDong), chuaCfg: docCaiChua() };
 }

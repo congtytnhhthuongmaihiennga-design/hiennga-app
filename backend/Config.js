@@ -60,7 +60,9 @@ var COT_GIA = {
   tinhNang: ['Tính năng'],
   hoaVan:   ['Hoa văn', 'Vân'],
   men:      ['Men', 'Bề mặt'],
-  dungTich: ['Dung tích', 'Thể tích']
+  dungTich: ['Dung tích', 'Thể tích'],
+  kg:       ['Trọng lượng (kg)', 'Khối lượng (kg)', 'Trọng lượng', 'Khối lượng', 'Số kg', 'Kg'],   // kg / thùng (gạch, ngói) hoặc kg / đơn vị bán
+  video:    ['Link video', 'Video', 'Link video Drive']
 };
 var COT_TON = {
   ma:  ['Mã hàng', 'Mã SP', 'Mã', 'Mã vật tư', 'Material Number'],

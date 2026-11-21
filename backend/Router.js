@@ -62,6 +62,7 @@ function xuLy(p) {
       case 'themHangLoat': return coQuyen(ti, 'sanpham') ? themHangLoat(p, ti) : cam;
       // Báo giá (nháp)
       case 'xoaHetDon':  return laAdmin ? xoaHetDonWeb(p, ti) : cam;
+      case 'xoaDon':     return laAdmin ? xoaDon(p, ti) : cam;   // xóa từng đơn đã chọn – chỉ quản trị
       case 'dsBaoGia':   return coQuyen(ti, 'baogia') ? dsBaoGia() : cam;
       case 'luuBaoGia':  return coQuyen(ti, 'baogia') ? luuBaoGia(p, ti) : cam;
       case 'xoaBaoGia':  return coQuyen(ti, 'baogia') ? xoaBaoGia(p, ti) : cam;

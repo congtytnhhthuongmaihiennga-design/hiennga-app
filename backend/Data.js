@@ -23,7 +23,8 @@ function docGia() {
       loai: o(r, 'loai'), dvt: o(r, 'dvt'), dg: o(r, 'dg'),
       ny: soTien(r[c.ny]), dl: c.dl === undefined ? 0 : soTien(r[c.dl]), nyV: c.nyV === undefined ? 0 : soTien(r[c.nyV]), dlV: c.dlV === undefined ? 0 : soTien(r[c.dlV]), gc: o(r, 'gc'),
       mau: o(r, 'mau'), congNang: o(r, 'congNang'), tinhNang: o(r, 'tinhNang'),
-      hoaVan: o(r, 'hoaVan'), men: o(r, 'men'), dungTich: o(r, 'dungTich')
+      hoaVan: o(r, 'hoaVan'), men: o(r, 'men'), dungTich: o(r, 'dungTich'),
+      kg: c.kg === undefined ? 0 : (parseFloat(String(r[c.kg]).replace(',', '.')) || 0), video: o(r, 'video')
     });
   }
   data.forEach(dongBoGiaVien);
