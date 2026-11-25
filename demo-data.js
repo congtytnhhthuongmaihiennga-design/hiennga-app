@@ -84,6 +84,7 @@
     if (action === 'getTonKho') {
       if (!sess) return tre({ status: 'error', msg: 'need_login' });
       var t = sao(ton), giu = {};
+      dcDemo.filter(function (x) { return x.tt === 'dang'; }).forEach(function (x) { var d = t[x.ma]; if (!d) { if (x.lech <= 0) return; d = t[x.ma] = { tong: 0, dvt: x.dv, tier: { nhanh: 0, mai: 0, cho: 0 }, kho: [] }; } var tr = d.tong; d.tong = Math.max(0, tr + x.lech); var dl = d.tong - tr; if (dl >= 0) d.tier.nhanh += dl; else { var cn = -dl; ['nhanh', 'mai', 'cho'].forEach(function (k) { var b = Math.min(d.tier[k], cn); d.tier[k] -= b; cn -= b; }); } d.dc = { id: x.id, pm: tr, lech: x.lech, lyDo: x.lyDo, ghiChu: x.ghiChu, nguoi: x.nguoi, luc: x.luc }; });
       var giuDs = {};
       donDemo.forEach(function (d) { if (['moi', 'giu', 'xacnhan', 'danggiao'].indexOf(d.tt) >= 0) d.items.forEach(function (x) { giu[x.ma] = (giu[x.ma] || 0) + x.sl; (giuDs[x.ma] = giuDs[x.ma] || []).push({ don: d.ma, ten: d.nguoiTao || d.user, kh: d.chuaCho, ch: d.ten, loai: d.loai, tt: d.tt, han: d.han, sl: x.sl, dv: x.dv }); }); });
       Object.keys(giu).forEach(function (m) {
@@ -99,6 +100,18 @@
       if (sess.role !== 'khachhang') Object.keys(t).forEach(function (m) { apNgayDemo(t[m], m); });
       return tre({ status: 'ok', data: t, luc: new Date().toISOString() });
     }
+    // Sửa tồn / kiểm kho (giả, trong bộ nhớ)
+    if (action === 'dsDieuChinh') { if (!coQ(sess, 'nhapton')) return tre({ status: 'error', msg: 'forbidden' }); var dd0 = sao(dcDemo).reverse(); dd0.forEach(function (x) { x.pmNay = ton[x.ma] ? Math.round(ton[x.ma].tong * 1000) / 1000 : 0; }); return tre({ status: 'ok', dang: dd0.filter(function (x) { return x.tt === 'dang'; }), lichSu: dd0.filter(function (x) { return x.tt !== 'dang'; }) }); }
+    if (action === 'luuDieuChinh') {
+      if (!coQ(sess, 'nhapton')) return tre({ status: 'error', msg: 'forbidden' });
+      var pmD = ton[p.ma] ? Math.round(ton[p.ma].tong * 1000) / 1000 : 0, thD = Number(p.thuc), lD = Math.round((thD - pmD) * 1000) / 1000;
+      if (!p.lyDo) return tre({ status: 'error', msg: 'Chọn lý do lệch.' }); if (!lD) return tre({ status: 'error', msg: 'Số thực tế bằng số trên phần mềm – không lệch.' });
+      dcDemo.forEach(function (x) { if (x.ma === p.ma && x.tt === 'dang') { x.tt = 'thay'; x.nguoiXL = sess.username; x.lucXL = new Date().toISOString(); } });
+      var gD = data.filter(function (x) { return x.ma === p.ma; })[0], idD = 'DC261125-' + ('00' + (dcDemo.length + 1)).slice(-3);
+      dcDemo.push({ id: idD, ma: p.ma, ten: gD ? gD.ten : '', pm: pmD, thuc: thD, lech: lD, dv: ton[p.ma] ? ton[p.ma].dvt : (gD ? gD.dvt : ''), lyDo: p.lyDo, ghiChu: p.ghiChu || '', nguoi: sess.username, luc: new Date().toISOString(), tt: 'dang' });
+      ghiNK(sess, 'Sửa tồn (kiểm kho)', idD, p.ma); return tre({ status: 'ok', ma: idD, lech: lD, msg: 'Đã sửa tồn ' + p.ma + ': ' + pmD + ' → ' + thD + ' (' + (lD > 0 ? '+' : '') + lD + ')' });
+    }
+    if (action === 'xongDieuChinh') { if (!coQ(sess, 'nhapton')) return tre({ status: 'error', msg: 'forbidden' }); var xD = dcDemo.filter(function (x) { return x.id === p.id; })[0]; if (!xD || xD.tt !== 'dang') return tre({ status: 'error', msg: 'Lần sửa này đã kết thúc.' }); xD.tt = p.kieu === 'huy' ? 'huy' : 'pm'; xD.nguoiXL = sess.username; xD.lucXL = new Date().toISOString(); return tre({ status: 'ok', msg: xD.tt === 'pm' ? 'Đã kết thúc – app theo số phần mềm cho ' + xD.ma : 'Đã hủy lần sửa tồn ' + xD.ma }); }
     // Phiếu nhập kho (giả, trong bộ nhớ)
     if (action === 'dsPhieuNhap') return tre(coQ(sess, 'nhapton') ? { status: 'ok', data: sao(phieuDemo).sort(function (a, b) { return a.ngay < b.ngay ? 1 : -1; }), ngayTay: sao(ngayTayDemo) } : { status: 'error', msg: 'forbidden' });
     if (action === 'luuPhieuNhap') {
@@ -285,7 +298,7 @@
     return tre({ status: 'ok' });
   };
   // Ngày nhập: phiếu nhập (nhập trước bán trước) -> ghi tay -> cột Sheet (giống máy chủ)
-  var phieuDemo = [], ngayTayDemo = NGAY_TAY0;
+  var phieuDemo = [], ngayTayDemo = NGAY_TAY0, dcDemo = [];
   function apNgayDemo(d, ma) {
     var ton0 = d.tonGoc !== undefined ? d.tonGoc : d.tong, ds = [];
     phieuDemo.forEach(function (p) { p.items.forEach(function (x) { if (x.ma === ma) ds.push({ ngay: p.ngay, sl: x.sl, so: p.ma }); }); });

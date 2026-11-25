@@ -664,6 +664,7 @@
     var tu = laNoiBo() && d && d.tong > 0 ? tuoiTon(d.nhap) : null;
     if (tu) giuDong = '<div class="tuoi-dong tuoi-' + tu.muc + '">' + ic('clock', 'ic-sm') + '<span>Nhập kho từ <b>' + tu.ngay + '</b> · đã tồn <b>' + tu.n + ' ngày</b> · ' + tu.ten +
       (d.loNhap && d.loNhap.length > 1 ? '<br><small>Các lô còn trong kho: ' + d.loNhap.map(function (l) { return so(l.sl) + ' ' + esc(d.dvt || '') + ' nhập ' + l.ngay.slice(8, 10) + '/' + l.ngay.slice(5, 7) + (l.cu ? ' (hàng cũ)' : ''); }).join(' · ') + '</small>' : '') + '</span></div>' + giuDong;
+    if (laNoiBo() && d && d.dc) giuDong = '<div class="dc-dong">⚖️ <span>Đã sửa tồn theo kiểm kho: phần mềm ' + so(d.dc.pm) + ', lệch <b>' + (d.dc.lech > 0 ? '+' : '') + so(d.dc.lech) + '</b> ' + esc(d.dvt || '') + ' · ' + esc(d.dc.lyDo) + (d.dc.ghiChu ? ' – ' + esc(d.dc.ghiChu) : '') + ' <small>(' + esc(d.dc.nguoi) + ', ' + gioNgay(d.dc.luc) + ')</small></span></div>' + giuDong;
     if (!d || d.tong <= 0) return '<div class="ton-lon cho"><span class="cham"></span><div><b>Hết hàng' + (d && d.giu ? ' (đã giữ hết cho đơn)' : '') + '</b><small>Liên hệ để đặt hàng / hỏi ngày về</small></div></div>' + giuDong + gio;
     // Dòng lớn: lượng có sẵn (hoặc mai có / chờ hàng nếu kho gần không còn).
     var t = tierChinh(d), so1 = d.tier[t];
@@ -1527,7 +1528,7 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden && !DEMO) kiemTraBanMoi(); });
   if (DEMO) {
     var sc = document.createElement('script');
-    sc.src = 'demo-data.js?v=21'; sc.onload = batDau;
+    sc.src = 'demo-data.js?v=22'; sc.onload = batDau;
     sc.onerror = function () { document.body.innerHTML = '<p style="padding:20px">Chưa cấu hình APPS_URL trong config.js.</p>'; };
     document.head.appendChild(sc);
   } else batDau();

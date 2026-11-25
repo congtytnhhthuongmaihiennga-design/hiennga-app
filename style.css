@@ -485,3 +485,4 @@ body.che-xem main{padding:0 0 30px;max-width:720px}
 .video-nut{display:flex;gap:10px}
 .video-nut .btn{width:auto}
 .video-ghi{color:#ccc;font-size:13px;text-align:center}
+.dc-dong{display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding:9px 12px;border-radius:10px;background:#FFF1DC;color:#7A4A00;font-size:13px;line-height:1.45}
