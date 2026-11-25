@@ -806,10 +806,53 @@
           '<input class="qt-so-o" inputmode="numeric" data-tem-gia="' + i + '" value="' + (giaGT(it) ? so(giaGT(it)) : '') + '" placeholder="Giá in" title="Giá in (chỉ in ra tem)">' +
           '<span class="tm-sl"><button type="button" data-tem-sl="' + i + '" data-d="-1">−</button><b>' + it.so + '</b><button type="button" data-tem-sl="' + i + '" data-d="1">＋</button></span></div>';
       }).join('') + '</div><div class="tm-nhan">Xem trước</div><div class="tm-xem">' + temHtml(GT.gio[0]) + '</div>' +
-        '<p class="mo">Hộp thoại in: khổ giấy ' + kho.w + '×' + kho.h + ' mm' + (kho.a4 ? ' (giấy A4)' : '') + ', lề = Không, tỉ lệ 100%. Không có máy in tem: chọn "Lưu dưới dạng PDF".</p>'
+        (kho.nhiet ? '<p class="tm-nhiet">📱 <b>Máy in nhiệt mini</b> (PeriPage, Phomemo… in qua app điện thoại): bấm <b>"Ảnh tem cho máy in nhiệt"</b> → chọn app của máy in → in. Trong app máy in chọn giấy <b>tem ' + kho.w + '×' + kho.h + ' mm</b>. Không dùng nút In / PDF: điện thoại in theo giấy A4 nên tem bị thu nhỏ vào góc.</p>' :
+        '<p class="mo">Hộp thoại in: khổ giấy ' + kho.w + '×' + kho.h + ' mm' + (kho.a4 ? ' (giấy A4)' : '') + ', lề = Không, tỉ lệ 100%. Không có máy in tem: chọn "Lưu dưới dạng PDF".</p>')
         : '<div class="qt-trong">Chưa có mã – bấm ＋ ở danh sách bên trái.</div>') +
       '</div><div class="tm-chan"><button type="button" class="btn btn-vien" data-qt-act="tem-xoa"' + (GT.gio.length ? '' : ' disabled') + '>Xóa hết</button>' +
-      '<button type="button" class="btn btn-chinh" data-qt-act="tem-in"' + (tong ? '' : ' disabled') + '>🖨 In ' + tong + ' tem</button></div></div></div>';
+      '<button type="button" class="btn ' + (kho.nhiet ? 'btn-vien' : 'btn-chinh') + '" data-qt-act="tem-in"' + (tong ? '' : ' disabled') + '>🖨 In ' + tong + ' tem</button>' +
+      '<button type="button" class="btn ' + (kho.nhiet ? 'btn-chinh' : 'btn-vien') + '" data-qt-act="tem-anh"' + (tong ? '' : ' disabled') + ' title="Máy in nhiệt mini (PeriPage, Phomemo…) in qua app điện thoại">📱 Ảnh tem cho máy in nhiệt</button></div></div></div>';
+  }
+  // Ảnh tem cho máy in nhiệt: mỗi tem 1 ảnh PNG đúng khổ -> chia sẻ sang app máy in (điện thoại) hoặc tải về.
+  function anhTemQT(nut) {
+    var kho = khoGT(), ds = [];
+    GT.gio.forEach(function (it) { for (var i = 0; i < Math.max(0, it.so | 0); i++) ds.push(it); });
+    if (!ds.length) return;
+    if (ds.length > 60 && !confirm('Tạo ' + ds.length + ' ảnh tem? Nhiều ảnh, gửi một lần có thể chậm.')) return;
+    nut.disabled = true; var cu = nut.textContent; nut.textContent = 'Đang tạo ảnh…';
+    var p0 = function (it) { var p = spTheoMa(it.ma) || { ma: it.ma, _ten: it.ma, dvt: '' }; return { p: p, gia: giaGT(it), tenApp: CFG.TEN_APP, link: linkXemMau(it.ma) }; };
+    Promise.all(ds.map(function (it, i) { return window.TEM_HN.veTemAnh(p0(it), kho).then(function (b) { return new File([b], 'tem-' + String(i + 1).padStart(2, '0') + '-' + it.ma.replace(/[^\w.-]+/g, '_') + '.png', { type: 'image/png' }); }); }))
+      .then(function (tep) {
+        nut.disabled = false; nut.textContent = cu;
+        var ngay = new Date().toISOString();
+        GT.gio.forEach(function (it) { var p = spTheoMa(it.ma); GT.daIn[it.ma] = { gia: giaGT(it), ny: p ? p.ny || 0 : 0, ngay: ngay }; }); LS.set('tem_dain', GT.daIn);
+        moAnhTem(tep, kho);
+      }).catch(function (e) { nut.disabled = false; nut.textContent = cu; toast('Không tạo được ảnh tem: ' + e.message); });
+  }
+  function moAnhTem(tep, kho) {
+    var chiaSe = navigator.canShare && navigator.canShare({ files: tep.slice(0, 1) });
+    var url = tep.map(function (f) { return URL.createObjectURL(f); });
+    var html = '<div class="sh-head"><h3>Ảnh tem ' + kho.w + '×' + kho.h + ' mm · ' + tep.length + ' tem</h3><button type="button" class="sh-x" data-qt-act="dong" aria-label="Đóng">✕</button></div><div class="sh-body">' +
+      '<ol class="tm-buoc"><li>' + (chiaSe ? 'Bấm <b>Gửi sang app máy in</b> → chọn app của máy in (PeriPage…).' : 'Bấm <b>Tải ảnh về máy</b>, rồi mở app của máy in → chọn In ảnh → chọn các ảnh vừa tải.') + '</li>' +
+      '<li>Trong app máy in: chọn giấy <b>tem / nhãn ' + kho.w + '×' + kho.h + ' mm</b> (có khe hở giữa các tem), độ đậm vừa.</li><li>In thử 1 tem trước khi in cả loạt.</li></ol>' +
+      '<div class="tm-anh-ds">' + url.map(function (u) { return '<img src="' + u + '" alt="">'; }).join('') + '</div></div>' +
+      '<div class="sh-foot"><div class="qt-hd">' + (chiaSe ? '<button type="button" class="btn btn-chinh" id="tm-gui">📤 Gửi sang app máy in</button>' : '') +
+      '<button type="button" class="btn ' + (chiaSe ? 'btn-vien' : 'btn-chinh') + '" id="tm-tai">⬇ Tải ảnh về máy</button></div></div>';
+    $('qt-ngan').innerHTML = html; $('qt-ngan').hidden = false; $('qt-nen').hidden = false;
+    var gui = $('tm-gui');
+    if (gui) gui.onclick = function () {
+      var dot = []; for (var i = 0; i < tep.length; i += 20) dot.push(tep.slice(i, i + 20)); // gửi từng đợt 20 ảnh
+      var guiDot = function (k) {
+        if (k >= dot.length) return;
+        navigator.share({ files: dot[k], title: 'Tem giá' }).then(function () { if (k + 1 < dot.length) { gui.textContent = '📤 Gửi đợt ' + (k + 2) + '/' + dot.length; gui.onclick = function () { guiDot(k + 1); }; } else toast('Đã gửi ' + tep.length + ' ảnh tem'); })
+          .catch(function (e) { if (e && e.name !== 'AbortError') toast('Không gửi được: ' + e.message + ' – dùng Tải ảnh về máy'); });
+      };
+      guiDot(0);
+    };
+    $('tm-tai').onclick = function () {
+      tep.forEach(function (f, i) { setTimeout(function () { var l = document.createElement('a'); l.href = url[i]; l.download = f.name; document.body.appendChild(l); l.click(); l.remove(); }, i * 250); });
+      toast('Đang tải ' + tep.length + ' ảnh tem (thư mục Tải xuống)');
+    };
   }
   function inTemQT() {
     var ds = []; GT.gio.forEach(function (it) { for (var i = 0; i < Math.max(0, it.so | 0); i++) ds.push(temHtml(it)); });
@@ -1409,6 +1452,7 @@
     else if (a === 'tem-doi-gia') { maDoiGiaGT().forEach(function (m) { if (!GT.gio.some(function (x) { return x.ma === m; })) themGT(m); }); ve(); }
     else if (a === 'tem-xoa') { if (confirm('Xóa hết giỏ tem?')) { GT.gio = []; luuGT(); ve(); } }
     else if (a === 'tem-in') inTemQT();
+    else if (a === 'tem-anh') anhTemQT(el);
     else if (a === 'tk-moi') formTK(null);
     else if (a === 'luu-tk') luuTK(el);
     else if (a === 'xoa-dem') { el.disabled = true; api('clearCache', {}).then(function (r) { el.disabled = false; toast(r && r.status === 'ok' ? 'Đã xóa bộ nhớ đệm – app đọc lại Sheet ở lần mở tới' : 'Không làm được'); S.gia.ds = null; S.ton = null; }); }
