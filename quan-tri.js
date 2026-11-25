@@ -95,7 +95,7 @@
   function ngayNgan(iso) { var x = new Date(iso); return isNaN(x) ? '' : ('0' + x.getDate()).slice(-2) + '/' + ('0' + (x.getMonth() + 1)).slice(-2); }
   function conLai(iso) { var h = new Date(iso).getTime() - Date.now(); if (isNaN(h)) return ''; if (h < 0) return 'quá hạn ' + Math.ceil(-h / 86400000) + ' ngày'; var n = Math.floor(h / 86400000); return n < 1 ? 'hết hạn hôm nay' : 'còn ' + n + ' ngày'; }
   function tuoiTon(iso) { if (!iso) return null; var t = new Date(iso + 'T00:00:00'); if (isNaN(t)) return null; var n = Math.max(0, Math.floor((Date.now() - t.getTime()) / 86400000));
-    return { n: n, muc: n <= 30 ? 'moi' : n <= 90 ? 'tb' : n <= 180 ? 'lau' : 'rlau', ten: n <= 30 ? 'Hàng mới' : n <= 90 ? 'Bình thường' : n <= 180 ? 'Tồn lâu' : 'Tồn rất lâu – nên sale', ngay: ('0' + t.getDate()).slice(-2) + '/' + ('0' + (t.getMonth() + 1)).slice(-2) + '/' + t.getFullYear() }; }
+    return { n: n, muc: n <= 30 ? 'moi' : n <= 180 ? 'tb' : n <= 365 ? 'lau' : 'rlau', ten: n <= 30 ? 'Hàng mới' : n <= 180 ? 'Bình thường' : n <= 365 ? 'Tồn lâu' : 'Tồn trên 1 năm – nên sale', ngay: ('0' + t.getDate()).slice(-2) + '/' + ('0' + (t.getMonth() + 1)).slice(-2) + '/' + t.getFullYear() }; }
   function nhanChua(d) {
     if (d.loai !== 'chua') return '';
     var s = '<br><small class="qt-chua' + (hetHan(d) ? ' het' : '') + '">🔒 ' + esc(d.nguoiTao || d.user) + ' chừa ' + d.soNgay + ' ngày' + (d.chuaCho ? ' · cho ' + esc(d.chuaCho) : '') + (d.tt === 'giu' && d.han ? ' · hạn ' + ngayNgan(d.han) + (hetHan(d) ? ' – HẾT HẠN' : '') : '') + '</small>';
@@ -1322,7 +1322,7 @@
   }
 
   // Bảng tuổi tồn: ngày nhập theo phiếu nhập / ghi tay (lưu ở Sheet chính, không mất khi dán lại Sheet Tồn kho).
-  var MUC_TUOI = [['', 'Tất cả'], ['rlau', '> 180 ngày'], ['lau', '91 – 180 ngày'], ['tb', '31 – 90 ngày'], ['moi', '≤ 30 ngày'], ['chua', 'Chưa có ngày nhập']];
+  var MUC_TUOI = [['', 'Tất cả'], ['rlau', '> 1 năm'], ['lau', '181 – 365 ngày'], ['tb', '31 – 180 ngày'], ['moi', '≤ 30 ngày'], ['chua', 'Chưa có ngày nhập']];
   var NGUON_NHAP = { phieu: 'theo phiếu nhập', tay: 'ghi tay', sheet: 'theo Sheet' };
   function veTuoiTon() {
     if (!S.ton) { if (!S.tonDangTai) { S.tonDangTai = 1; taiTon().then(function () { S.tonDangTai = 0; if (S.trang === 'ton') ve(); }); } return '<div class="qt-khung" style="margin-top:14px"><div class="qt-trong">Đang tải tồn kho…</div></div>'; }
@@ -1359,7 +1359,7 @@
       toast(r.msg); S.tuoiSua = ''; S.ton = null; S.pn.ds = null; ve();
     }).catch(function (e) { nut.disabled = false; toast('Chưa ghi được: ' + e.message); });
   }
-  function chuThichTuoi() { return '<div class="qt-tuoi-ct"><span class="tuoi tuoi-moi">≤ 30 ngày: hàng mới</span><span class="tuoi tuoi-tb">31 – 90: bình thường</span><span class="tuoi tuoi-lau">91 – 180: tồn lâu</span><span class="tuoi tuoi-rlau">> 180: tồn rất lâu – nên sale</span></div>'; }
+  function chuThichTuoi() { return '<div class="qt-tuoi-ct"><span class="tuoi tuoi-moi">≤ 30 ngày: hàng mới</span><span class="tuoi tuoi-tb">31 – 180: bình thường</span><span class="tuoi tuoi-lau">181 – 365: tồn lâu</span><span class="tuoi tuoi-rlau">> 1 năm: tồn rất lâu – nên sale</span></div>'; }
 
   // ---------- Gợi ý khi di chuột vào cột biểu đồ ----------
   var tip = document.createElement('div'); tip.className = 'qt-tip'; tip.hidden = true; document.body.appendChild(tip);
@@ -1536,5 +1536,5 @@
     veMenu(); ve(); taiDon();
     clearInterval(batDau._t); batDau._t = setInterval(function () { if (!document.hidden) taiDon(true); }, 60000); // tự làm mới mỗi phút
   }
-  if (DEMO) { var sc = document.createElement('script'); sc.src = 'demo-data.js?v=20'; sc.onload = batDau; document.head.appendChild(sc); } else batDau();
+  if (DEMO) { var sc = document.createElement('script'); sc.src = 'demo-data.js?v=21'; sc.onload = batDau; document.head.appendChild(sc); } else batDau();
 })();

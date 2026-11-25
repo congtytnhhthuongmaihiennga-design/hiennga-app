@@ -47,7 +47,7 @@
       var sl = 5 + rnd(120) + (d.vt ? rnd(d.vt) / d.vt : 0), lo = [{ so: 'L' + (2400 + rnd(99)), sl: Math.ceil(sl / 2) }, { so: 'L' + (2500 + rnd(99)), sl: Math.floor(sl / 2) }];
       d.kho.push({ ten: k[0], nhom: k[1], tong: sl, lo: lo }); d.tong += sl; d.tier[k[1]] += sl;
     });
-    var nhap = new Date(Date.now() - (3 + rnd(320)) * 86400000), iso = function (x) { return x.getFullYear() + '-' + ('0' + (x.getMonth() + 1)).slice(-2) + '-' + ('0' + x.getDate()).slice(-2); };
+    var nhap = new Date(Date.now() - (3 + rnd(560)) * 86400000), iso = function (x) { return x.getFullYear() + '-' + ('0' + (x.getMonth() + 1)).slice(-2) + '-' + ('0' + x.getDate()).slice(-2); };
     if (rnd(4) !== 0) NGAY_TAY0[p.ma] = iso(nhap); // ngày ghi tay (Sheet chính), ~1/4 mã chưa có ngày
     if (d.tong) ton[p.ma] = d;
   });

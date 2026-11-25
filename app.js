@@ -90,7 +90,7 @@
   }
   function laKhach() { return !S.sess || S.sess.role === 'khachhang'; }
   function tuoiTon(iso) { if (!iso) return null; var t = new Date(iso + 'T00:00:00'); if (isNaN(t)) return null; var n = Math.max(0, Math.floor((Date.now() - t.getTime()) / 86400000));
-    return { n: n, muc: n <= 30 ? 'moi' : n <= 90 ? 'tb' : n <= 180 ? 'lau' : 'rlau', ten: n <= 30 ? 'Hàng mới' : n <= 90 ? 'Bình thường' : n <= 180 ? 'Tồn lâu' : 'Tồn rất lâu – nên sale', ngay: ('0' + t.getDate()).slice(-2) + '/' + ('0' + (t.getMonth() + 1)).slice(-2) + '/' + t.getFullYear() }; }
+    return { n: n, muc: n <= 30 ? 'moi' : n <= 180 ? 'tb' : n <= 365 ? 'lau' : 'rlau', ten: n <= 30 ? 'Hàng mới' : n <= 180 ? 'Bình thường' : n <= 365 ? 'Tồn lâu' : 'Tồn trên 1 năm – nên sale', ngay: ('0' + t.getDate()).slice(-2) + '/' + ('0' + (t.getMonth() + 1)).slice(-2) + '/' + t.getFullYear() }; }
   function laNoiBo() { return !!S.sess && S.sess.role !== 'khachhang'; }
   function sdt() { return String(CFG.LIEN_HE_SDT || '').replace(/[^\d+]/g, ''); }
   // 0939182288 -> "093 918 22 88" (cách ghi trên trang Facebook công ty)
@@ -232,7 +232,7 @@
     if (!d || d.tong <= 0) return '<span class="ton het">' + (laNoiBo() ? 'Hết hàng' : 'Liên hệ') + '</span>';
     var t = tierChinh(d), tu = laNoiBo() ? tuoiTon(d.nhap) : null;
     return '<span class="ton ' + t + '">' + (t === 'nhanh' ? soTon(d.tier.nhanh, d) : NGAN_TIER[t]) + '</span>' +
-      (tu && tu.n > 90 ? '<span class="tuoi tuoi-' + tu.muc + '" title="Nhập kho từ ' + tu.ngay + '">Tồn ' + tu.n + ' ngày</span>' : '');
+      (tu && tu.n > 180 ? '<span class="tuoi tuoi-' + tu.muc + '" title="Nhập kho từ ' + tu.ngay + '">Tồn ' + tu.n + ' ngày</span>' : '');
   }
   // Sắp xếp "tồn nhiều": ưu tiên hàng có ngay, rồi mai có, rồi chờ hàng.
   function ngayTon(p) { var d = S.ton && S.ton[p.ma], t = d && d.tong > 0 ? tuoiTon(d.nhap) : null; return t ? t.n : -1; }
@@ -1527,7 +1527,7 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden && !DEMO) kiemTraBanMoi(); });
   if (DEMO) {
     var sc = document.createElement('script');
-    sc.src = 'demo-data.js?v=20'; sc.onload = batDau;
+    sc.src = 'demo-data.js?v=21'; sc.onload = batDau;
     sc.onerror = function () { document.body.innerHTML = '<p style="padding:20px">Chưa cấu hình APPS_URL trong config.js.</p>'; };
     document.head.appendChild(sc);
   } else batDau();

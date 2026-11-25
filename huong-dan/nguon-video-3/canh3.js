@@ -15,13 +15,13 @@ module.exports = [
 
   { phan: 'Phần 2 · Tuổi tồn', tieuDe: 'Nhập trước – bán trước', y: ['Lấy các phiếu mới nhất cộng dồn tới đủ số tồn', 'Lô cũ nhất còn lại = ngày tính tuổi tồn', 'Thiếu phiếu: phần còn lại là hàng cũ', 'Hàng cũ: dùng ngày ghi tay (✎)'], hinh: 'fifo',
     loi: 'Phần hai, cách app tính tuổi tồn: nhập trước, bán trước. Ví dụ trong kho còn hai trăm mười hai thùng. App lấy các phiếu nhập mới nhất cộng dồn: sáu mươi thùng ngày năm tháng mười một, năm mươi thùng ngày hai lăm tháng mười. Phần còn lại là hàng cũ. Lô cũ nhất còn trong kho quyết định số ngày tồn.' },
-  { phan: 'Phần 2 · Tuổi tồn', tieuDe: 'Bảng tuổi tồn kho', y: ['≤ 30 ngày xanh · 31–90 xám', '91–180 cam · trên 180 đỏ – nên sale', 'Lọc theo mức · tìm mã', 'Tồn lâu nhất xếp lên đầu'], hinh: 'b3',
-    loi: 'Bảng tuổi tồn kho nằm ngay bên dưới. Mỗi mã có ngày nhập, số ngày đã tồn và màu: dưới ba mươi ngày màu xanh, tới chín mươi ngày màu xám, tới một trăm tám mươi ngày màu cam, quá một trăm tám mươi ngày màu đỏ, nên bán sale. Bấm các nút phía trên để lọc theo mức, hoặc gõ tìm mã.' },
+  { phan: 'Phần 2 · Tuổi tồn', tieuDe: 'Bảng tuổi tồn kho', y: ['≤ 30 ngày xanh · 31–180 xám', '181–365 cam · trên 1 năm đỏ – nên sale', 'Lọc theo mức · tìm mã', 'Tồn lâu nhất xếp lên đầu'], hinh: 'b3',
+    loi: 'Bảng tuổi tồn kho nằm ngay bên dưới. Mỗi mã có ngày nhập, số ngày đã tồn và màu: dưới ba mươi ngày màu xanh, tới một trăm tám mươi ngày màu xám, tới một năm màu cam, tồn trên một năm màu đỏ, nên bán sale. Bấm các nút phía trên để lọc theo mức, hoặc gõ tìm mã.' },
   { phan: 'Phần 2 · Tuổi tồn', tieuDe: 'Ghi nhanh ngày cho hàng cũ', y: ['Bấm "Chưa có ngày nhập"', 'Chọn ngày → "Lưu"', 'Mã đã có ngày: bấm ✎ để sửa', 'Mỗi mã chỉ cần ghi 1 lần'], hinh: 'b4',
     loi: 'Hàng tồn từ trước, chưa có phiếu nhập, thì bấm nút Chưa có ngày nhập. Mỗi mã có ô chọn ngày, chọn rồi bấm Lưu. Mã đã có ngày thì bấm biểu tượng cây bút để sửa. Mỗi mã chỉ cần ghi một lần, từ nay hàng về thì lập phiếu nhập.' },
 
-  { phan: 'Phần 3 · Bán hàng', tieuDe: 'Nhân viên bán hàng thấy gì', y: ['Nhãn "Tồn … ngày" cho hàng trên 90 ngày', 'Lọc → sắp xếp "Tồn lâu nhất"', 'Mở sản phẩm: ngày nhập từng lô', 'Đại lý, khách lẻ KHÔNG thấy'], hinh: 'a1|a2',
-    loi: 'Phần ba, bên app bán hàng. Nhân viên thấy nhãn tồn bao nhiêu ngày ở những mã tồn trên chín mươi ngày, và có cách sắp xếp Tồn lâu nhất trong mục Lọc. Mở sản phẩm sẽ thấy ngày nhập và các lô còn trong kho. Đại lý và khách lẻ không thấy các thông tin này.' },
+  { phan: 'Phần 3 · Bán hàng', tieuDe: 'Nhân viên bán hàng thấy gì', y: ['Nhãn "Tồn … ngày" cho hàng trên 180 ngày', 'Lọc → sắp xếp "Tồn lâu nhất"', 'Mở sản phẩm: ngày nhập từng lô', 'Đại lý, khách lẻ KHÔNG thấy'], hinh: 'a1|a2',
+    loi: 'Phần ba, bên app bán hàng. Nhân viên thấy nhãn tồn bao nhiêu ngày ở những mã tồn trên một trăm tám mươi ngày, và có cách sắp xếp Tồn lâu nhất trong mục Lọc. Mở sản phẩm sẽ thấy ngày nhập và các lô còn trong kho. Đại lý và khách lẻ không thấy các thông tin này.' },
   { phan: 'Tóm tắt', tieuDe: 'Cách dùng hằng ngày', y: ['Hàng về → lập phiếu nhập', 'Hàng tồn cũ → ghi ngày 1 lần', 'Kế toán vẫn cập nhật số tồn từ phần mềm kho', 'Bán hàng ưu tiên đẩy hàng màu đỏ, cam'], hinh: 'quytrinh',
     loi: 'Tóm lại: hàng về thì lập phiếu nhập. Hàng tồn cũ thì ghi ngày nhập một lần. Kế toán vẫn cập nhật số lượng tồn từ phần mềm kho như trước. Bộ phận bán hàng xem bảng tuổi tồn để ưu tiên đẩy hàng màu đỏ và màu cam. Cảm ơn anh chị đã theo dõi.' }
 ];
