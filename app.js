@@ -859,15 +859,21 @@
     if ((m = u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:.*&)?id=)([-\w]{20,})/))) return { loai: 'drive', src: 'https://drive.google.com/file/d/' + m[1] + '/preview', mo: 'https://drive.google.com/file/d/' + m[1] + '/view' };
     return /^https?:\/\//i.test(u) ? { loai: 'khac', mo: u } : null;
   }
-  function nutVideo(p) { return nhungVideo(p.video) ? '<button type="button" class="ct-video" data-act="xem-video" data-ma="' + esc(p.ma) + '">' + '▶ Xem video sản phẩm</button>' : ''; }
-  function moVideo(ma) {
-    var p = S.byMa[ma], v = p && nhungVideo(p.video); if (!v) return;
+  function dsVideo(p) { return String((p && p.video) || '').split(/\s+/).map(nhungVideo).filter(Boolean); }
+  function nutVideo(p) {
+    var ds = dsVideo(p); if (!ds.length) return '';
+    return ds.length === 1 ? '<button type="button" class="ct-video" data-act="xem-video" data-ma="' + esc(p.ma) + '">▶ Xem video sản phẩm</button>'
+      : '<div class="ct-video-ds">' + ds.map(function (v, i) { return '<button type="button" class="ct-video" data-act="xem-video" data-ma="' + esc(p.ma) + '" data-vi="' + i + '">▶ Video ' + (i + 1) + '</button>'; }).join('') + '</div>';
+  }
+  function moVideo(ma, vi) {
+    var p = S.byMa[ma], ds = dsVideo(p), i = Math.max(0, Math.min(ds.length - 1, Number(vi) || 0)), v = ds[i]; if (!v) return;
     if (v.loai === 'khac') { window.open(v.mo, '_blank', 'noopener'); return; }
+    var cu = document.querySelector('.video-nen'); if (cu) cu.remove();
     var nen = document.createElement('div'); nen.className = 'video-nen';
-    nen.innerHTML = '<div class="video-khung' + (v.doc ? ' doc' : '') + '"><iframe src="' + esc(v.src) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>' +
-      '<div class="video-nut"><a class="btn btn-vien btn-nho" href="' + esc(v.mo) + '" target="_blank" rel="noopener">Mở bằng ' + (v.loai === 'yt' ? 'YouTube' : 'Google Drive') + '</a><button type="button" class="btn btn-chinh btn-nho" data-dong-video="1">Đóng</button></div>' +
+    nen.innerHTML = (ds.length > 1 ? '<div class="video-so">Video ' + (i + 1) + ' / ' + ds.length + '</div>' : '') + '<div class="video-khung' + (v.doc ? ' doc' : '') + '"><iframe src="' + esc(v.src) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>' +
+      '<div class="video-nut">' + (ds.length > 1 ? '<button type="button" class="btn btn-vien btn-nho" data-vi-di="' + ((i - 1 + ds.length) % ds.length) + '">‹ Trước</button>' : '') + '<a class="btn btn-vien btn-nho" href="' + esc(v.mo) + '" target="_blank" rel="noopener">Mở bằng ' + (v.loai === 'yt' ? 'YouTube' : 'Google Drive') + '</a><button type="button" class="btn btn-chinh btn-nho" data-dong-video="1">Đóng</button>' + (ds.length > 1 ? '<button type="button" class="btn btn-vien btn-nho" data-vi-di="' + ((i + 1) % ds.length) + '">Sau ›</button>' : '') + '</div>' +
       (v.loai === 'drive' ? '<p class="video-ghi">Không phát được? Link Drive phải chia sẻ "Bất kỳ ai có đường liên kết".</p>' : '');
-    nen.addEventListener('click', function (e) { if (e.target === nen || e.target.hasAttribute('data-dong-video')) nen.remove(); });
+    nen.addEventListener('click', function (e) { if (e.target.hasAttribute('data-vi-di')) { moVideo(ma, e.target.getAttribute('data-vi-di')); return; } if (e.target === nen || e.target.hasAttribute('data-dong-video')) nen.remove(); });
     document.body.appendChild(nen);
   }
   // Trọng lượng: gạch / ngói tính kg cho 1 thùng, hàng khác kg cho 1 đơn vị bán.
@@ -1419,7 +1425,7 @@
       case 'loc': moLoc(); break;
       case 'xoa-loc': S.loc = {}; S.chiConHang = false; veTrang(); moLoc(); break;
       case 'con-hang': S.chiConHang = !S.chiConHang; S.trang = 1; veTrang(); break;
-      case 'xem-video': moVideo(el.getAttribute('data-ma')); break;
+      case 'xem-video': moVideo(el.getAttribute('data-ma'), el.getAttribute('data-vi')); break;
       case 'them-tem': themTem(el.getAttribute('data-ma')); toast('Đã thêm vào giỏ tem (' + S.gioTem.length + ' mã) – ' + (S.sess && S.sess.role !== 'khachhang' ? 'in ở Trang quản trị → In tem giá' : 'mở ở menu tài khoản')); break;
       case 'tem-ds': {
         var dsIn = dsHienThi().slice(0, 300);
@@ -1528,7 +1534,7 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden && !DEMO) kiemTraBanMoi(); });
   if (DEMO) {
     var sc = document.createElement('script');
-    sc.src = 'demo-data.js?v=22'; sc.onload = batDau;
+    sc.src = 'demo-data.js?v=23'; sc.onload = batDau;
     sc.onerror = function () { document.body.innerHTML = '<p style="padding:20px">Chưa cấu hình APPS_URL trong config.js.</p>'; };
     document.head.appendChild(sc);
   } else batDau();

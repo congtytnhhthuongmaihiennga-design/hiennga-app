@@ -61,7 +61,7 @@ function luuSanPham(p, ti) {
       can.forEach(function (k) { b.sh.getRange(b.hi + 1, cot + 1).setValue(TEN_TRUONG[k]).setFontWeight('bold'); b.c[k] = cot; cot++; });
     }
     var rong = Math.max(b.sh.getLastColumn(), b.rows[b.hi].length);
-    var giaTri = function (k, v) { return LA_GIA[k] ? Math.max(0, Math.round(Number(String(v).replace(/[^\d]/g, '')) || 0)) : LA_SO_LE[k] ? soLe(v) : chu(v).slice(0, 500); };
+    var giaTri = function (k, v) { return LA_GIA[k] ? Math.max(0, Math.round(Number(String(v).replace(/[^\d]/g, '')) || 0)) : LA_SO_LE[k] ? soLe(v) : k === 'video' ? String(v || '').split(/\s+/).filter(String).slice(0, 10).join('\n') : chu(v).slice(0, 500); };
     if (moi) {
       var dong = []; for (var j = 0; j < rong; j++) dong.push('');
       dong[b.c.ma] = ma;
@@ -102,31 +102,39 @@ function bangAnh() {
   var sh = layTabAnh(); if (!sh || !sh.getLastRow()) return null;
   var rows = sh.getDataRange().getValues(), hi = timDongTieuDe(rows, COT_GIA.ma);
   if (hi < 0) return null;
-  var iLink = -1; rows[hi].forEach(function (h, j) { if (iLink < 0 && laCotAnh(h)) iLink = j; });
-  return { sh: sh, rows: rows, hi: hi, c: timCot(rows[hi], { ma: COT_GIA.ma, ten: COT_GIA.ten.concat(['Tên sản phẩm']) }), iLink: iLink };
+  var c = timCot(rows[hi], { ma: COT_GIA.ma, ten: COT_GIA.ten.concat(['Tên sản phẩm']) }), cot = [];
+  rows[hi].forEach(function (h, j) { if (j !== c.ma && laCotAnh(h)) cot.push(j); });
+  return { sh: sh, rows: rows, hi: hi, c: c, iLink: cot.length ? cot[0] : -1, cot: cot };
 }
 function linkAnhCua(ma) {
   try {
     var a = bangAnh(); if (!a || a.iLink < 0) return '';
-    for (var i = a.hi + 1; i < a.rows.length; i++) if (chu(a.rows[i][a.c.ma]).toUpperCase() === ma.toUpperCase()) return chu(a.rows[i][a.iLink]);
+    for (var i = a.hi + 1; i < a.rows.length; i++) if (chu(a.rows[i][a.c.ma]).toUpperCase() === ma.toUpperCase())
+      return a.cot.map(function (j) { return chu(a.rows[i][j]); }).join('\n').split(/[\s,;]+/).filter(String).join('\n'); // mọi link, mỗi link 1 dòng
   } catch (e) { }
   return '';
 }
 function ghiLinkAnh(ma, ten, link) {
+  var ds = String(link || '').split(/[\s,;]+/).filter(String).slice(0, 20);
+  link = ds.join('\n');
   var a = bangAnh();
   if (!a || a.iLink < 0) { if (!link) return false; throw new Error('Sheet Hình ảnh chưa có tab Ảnh – mở app 1 lần cho máy chủ tạo tab.'); }
   var cuoi = a.hi;
   for (var i = a.hi + 1; i < a.rows.length; i++) {
     if (chu(a.rows[i][a.c.ma])) cuoi = i;
     if (chu(a.rows[i][a.c.ma]).toUpperCase() !== ma.toUpperCase()) continue;
-    if (chu(a.rows[i][a.iLink]) === link) return false;
-    a.sh.getRange(i + 1, a.iLink + 1).setValue(link);
-    demXoa('anh2'); return true;
+    var doi = false;
+    a.cot.forEach(function (j, k) {
+      var v = k < a.cot.length - 1 ? (ds[k] || '') : ds.slice(k).join('\n');
+      if (chu(a.rows[i][j]) !== v) { a.sh.getRange(i + 1, j + 1).setValue(v); doi = true; }
+    });
+    if (doi) demXoa('anh2');
+    return doi;
   }
   if (!link) return false;
   a.sh.getRange(cuoi + 2, a.c.ma + 1).setNumberFormat('@').setValue(ma);
   if (a.c.ten !== undefined && ten) a.sh.getRange(cuoi + 2, a.c.ten + 1).setValue(ten);
-  a.sh.getRange(cuoi + 2, a.iLink + 1).setValue(link);
+  a.cot.forEach(function (j, k) { var v = k < a.cot.length - 1 ? (ds[k] || '') : ds.slice(k).join('\n'); if (v) a.sh.getRange(cuoi + 2, j + 1).setValue(v); });
   demXoa('anh2'); return true;
 }
 

@@ -34,7 +34,7 @@
   data.forEach(function (p, i) { // trọng lượng thử: gạch ≈ 20 kg / m² mỗi thùng; hàng khác vài kg
     var qcK = String(p.dg).match(/([\d.]+) m²/);
     if (p.dvt === 'm²' && qcK) p.kg = Math.round(Number(qcK[1]) * 20 * 10) / 10; else if (i % 3 === 0) p.kg = 2 + (i % 7) * 3;
-    if (i === 0) p.video = 'https://www.youtube.com/watch?v=VIDEOTHU001';
+    if (i === 0) p.video = 'https://www.youtube.com/watch?v=VIDEOTHU001\nhttps://youtube.com/shorts/VIDEOTHU002';
   });
   data.forEach(function (p) {
     if (rnd(5) === 0) return; // ~20% hết hàng
